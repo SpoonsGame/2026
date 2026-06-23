@@ -725,6 +725,7 @@ export default function KillCamDashboard() {
       };
 
       syncWithSheets();
+      const syncInterval = setInterval(syncWithSheets, 15000);
 
       // Listen for updates from other tabs
       const handleStorage = (e: StorageEvent) => {
@@ -741,7 +742,10 @@ export default function KillCamDashboard() {
       }
 
       setIsLoading(false);
-      return () => window.removeEventListener("storage", handleStorage);
+      return () => {
+        window.removeEventListener("storage", handleStorage);
+        clearInterval(syncInterval);
+      };
     }
   }, []);
 

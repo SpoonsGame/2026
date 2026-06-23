@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Skull, Settings, RefreshCcw, Plus, Trash2,
-  X, Check, Lock, Unlock, ArrowLeft, Key, Shuffle
+  X, Check, Lock, Unlock, ArrowLeft, Key, Shuffle, Search
 } from "lucide-react";
 import { Player, GameState, fetchStateFromRemote, addPlayerToSheet, eliminatePlayerInSheet, assignTargetInSheet } from "../spoonsApi";
 import Link from "next/link";
@@ -43,6 +43,9 @@ export default function KillCamSettings() {
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editPin, setEditPin] = useState("");
+
+  // Search filter state
+  const [searchQuery, setSearchQuery] = useState("");
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -105,6 +108,13 @@ export default function KillCamSettings() {
   // Derived metrics
   const alivePlayers = useMemo(() => gameState.players.filter(p => !p.isDead), [gameState.players]);
   const deadPlayers = useMemo(() => gameState.players.filter(p => p.isDead), [gameState.players]);
+
+  // Filtered players by search query
+  const filteredPlayers = useMemo(() => {
+    return gameState.players.filter(p =>
+      p.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [gameState.players, searchQuery]);
   
   const deadTodayCount = useMemo(() => {
     const todayStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -611,11 +621,35 @@ export default function KillCamSettings() {
                   <span className="text-3xs text-slate-400 font-bold uppercase">View credentials & statuses</span>
                 </div>
 
+                {/* SEARCH FILTER */}
+                {gameState.players.length > 0 && (
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Search campers by name..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full bg-[#fdfbf7] border border-[#dce6e1] rounded-xl pl-9 pr-8 py-2 text-xs focus:outline-none text-slate-800"
+                    />
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery("")}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-650"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 <div className="space-y-3 max-h-[450px] overflow-y-auto pr-1">
                   {gameState.players.length === 0 ? (
                     <p className="text-xs text-slate-400 italic text-center py-6">Roster is empty. Register campers in dashboard or import roster above.</p>
+                  ) : filteredPlayers.length === 0 ? (
+                    <p className="text-xs text-slate-400 italic text-center py-6">No campers found matching "{searchQuery}"</p>
                   ) : (
-                    gameState.players.map(p => {
+                    filteredPlayers.map(p => {
                       const target = getTargetFor(p.id);
                       const isEditing = editingPlayerId === p.id;
 
