@@ -665,7 +665,6 @@ export default function KillCamDashboard() {
 
   // Camper Self-Report Death Modal States
   const [isReportDeathOpen, setIsReportDeathOpen] = useState(false);
-  const [reportKillerName, setReportKillerName] = useState("");
 
   const [isRulesExpanded, setIsRulesExpanded] = useState(false);
 
@@ -859,11 +858,17 @@ export default function KillCamDashboard() {
   // Camper Self-Report Death Confirm
   const handleReportDeathSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!camperSession || !reportKillerName) return;
+    if (!camperSession) return;
 
     const victimId = camperSession.id;
     const victim = gameState.players.find(p => p.id === victimId);
     if (!victim || victim.isDead) return;
+
+    const hunter = gameState.players.find(p => p.targetId === victimId && !p.isDead);
+    if (!hunter) {
+      showToast("⚠️ Could not find your active hunter. Contact the GM.");
+      return;
+    }
 
     const killDate = new Date().toLocaleDateString("en-US", {
       month: "short",
@@ -873,7 +878,7 @@ export default function KillCamDashboard() {
     });
 
     const reason = "Eliminated in the hunt";
-    const hunter = gameState.players.find(p => p.targetId === victimId && !p.isDead);
+    const killerName = hunter.name;
 
     const updatedPlayers = gameState.players.map(p => {
       if (p.id === victimId) {
@@ -882,13 +887,14 @@ export default function KillCamDashboard() {
           isDead: true,
           killDate,
           deathReason: reason,
-          eliminatedBy: reportKillerName
+          eliminatedBy: killerName
         };
       }
-      if (hunter && p.id === hunter.id) {
+      if (p.id === hunter.id) {
+        const targetId = victim.targetId === hunter.id ? null : victim.targetId;
         return {
           ...p,
-          targetId: victim.targetId === hunter.id ? null : victim.targetId
+          targetId
         };
       }
       return p;
@@ -896,7 +902,7 @@ export default function KillCamDashboard() {
 
     const newLogEntry: KillLogEntry = {
       id: Date.now().toString() + "-" + victimId,
-      killerName: reportKillerName,
+      killerName: killerName,
       victimName: victim.name,
       date: killDate,
       reason
@@ -912,24 +918,19 @@ export default function KillCamDashboard() {
 
     // Sync elimination to Google Sheets (non-blocking background task)
     try {
-      const killer = gameState.players.find(p => p.name === reportKillerName);
-      if (killer) {
-        eliminatePlayerInSheet(victim.pin, killer.pin);
-      }
+      eliminatePlayerInSheet(victim.pin, hunter.pin);
 
       // Update target assignment for the hunter in Google Sheets
-      if (hunter) {
-        const targetId = victim.targetId === hunter.id ? null : victim.targetId;
-        const targetPlayer = targetId ? gameState.players.find(p => p.id === targetId) : null;
-        const targetName = targetPlayer ? targetPlayer.name : "None";
+      const targetId = victim.targetId === hunter.id ? null : victim.targetId;
+      const targetPlayer = targetId ? gameState.players.find(p => p.id === targetId) : null;
+      const targetName = targetPlayer ? targetPlayer.name : "None";
 
-        const hunterParts = hunter.name.split(" ");
-        const hunterFirst = hunterParts[0];
-        const hunterLast = hunterParts.slice(1).join(" ") || "Camper";
-        assignTargetInSheet(hunterFirst, hunterLast, targetName);
-      }
+      const hunterParts = hunter.name.split(" ");
+      const hunterFirst = hunterParts[0];
+      const hunterLast = hunterParts.slice(1).join(" ") || "Camper";
+      assignTargetInSheet(hunterFirst, hunterLast, targetName);
     } catch (error) {
-      console.error("Failed to sync elimination/target inheritance to Google Sheets:", error);
+      console.error("Failed to sync self-reported elimination to Google Sheets:", error);
     }
 
     const updatedSelf = updatedPlayers.find(p => p.id === victimId) || null;
@@ -939,7 +940,6 @@ export default function KillCamDashboard() {
     }
 
     setIsReportDeathOpen(false);
-    setReportKillerName("");
     showToast("💀 Death recorded. You are officially spooned.");
   };
 
@@ -1022,7 +1022,6 @@ export default function KillCamDashboard() {
 
               <button
                 onClick={() => {
-                  setReportKillerName("");
                   setIsReportDeathOpen(true);
                 }}
                 className="w-full bg-rose-600 hover:bg-rose-700 text-white font-black py-3 rounded-xl text-xs uppercase tracking-wider transition-all shadow-sm"
@@ -1516,26 +1515,23 @@ export default function KillCamDashboard() {
 
               <form onSubmit={handleReportDeathSubmit} className="space-y-4">
                 <p className="text-[10px] text-slate-500">
-                  Confirm your elimination. Choose the counselor who successfully spooned you.
+                  Confirm your elimination. Since target loops are tracked, your active hunter is automatically set as your killer.
                 </p>
 
-                <div>
-                  <label className="block text-4xs font-black text-[#2d6a4f] uppercase tracking-widest mb-1">Who Spooned You?</label>
-                  <select
-                    value={reportKillerName}
-                    onChange={(e) => setReportKillerName(e.target.value)}
-                    className="w-full bg-[#fdfbf7] border border-[#dce6e1] rounded-xl px-3 py-2 text-xs focus:outline-none text-slate-700"
-                    required
-                  >
-                    <option value="">-- Select Killer --</option>
-                    {alivePlayers.filter(ap => ap.id !== camperSession.id).map(p => (
-                      <option key={p.id} value={p.name}>{p.name}</option>
-                    ))}
-                  </select>
+                <div className="bg-[#fdfbf7] border border-[#dce6e1] rounded-xl p-4 text-center">
+                  <span className="block text-4xs font-black text-slate-400 uppercase tracking-widest mb-1">Your Killer (Hunter)</span>
+                  {(() => {
+                    const hunter = gameState.players.find(p => p.targetId === camperSession.id && !p.isDead);
+                    return hunter ? (
+                      <span className="font-extrabold text-[#1b4332] text-sm">{hunter.name}</span>
+                    ) : (
+                      <span className="font-extrabold text-rose-600 text-xs">No Active Hunter Found</span>
+                    );
+                  })()}
                 </div>
 
                 <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 text-[10px] text-rose-800 leading-relaxed">
-                  <strong>⚠️ Permanent Surrender:</strong> Submitting will mark you as dead, log the kill, and connect your hunter directly to your target.
+                  <strong>⚠️ Permanent Surrender:</strong> Submitting will mark you as dead, log the kill under your hunter's name, and connect them directly to your target.
                 </div>
 
                 <div className="flex gap-2">
@@ -1548,7 +1544,8 @@ export default function KillCamDashboard() {
                   </button>
                   <button
                     type="submit"
-                    className="w-1/2 bg-rose-600 hover:bg-rose-700 text-white font-black text-2xs py-2 rounded-lg transition-all"
+                    disabled={!gameState.players.some(p => p.targetId === camperSession.id && !p.isDead)}
+                    className="w-1/2 bg-rose-600 hover:bg-rose-700 text-white font-black text-2xs py-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Confirm Spooned
                   </button>
