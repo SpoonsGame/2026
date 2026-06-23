@@ -407,7 +407,7 @@ export default function LiveMapPage() {
 
   if (isLoading) {
     return (
-      <div className="-mt-16 min-h-screen bg-[#fdfbf7] flex flex-col items-center justify-center text-slate-400 font-sans">
+      <div className="min-h-screen bg-[#fdfbf7] flex flex-col items-center justify-center text-slate-400 font-sans">
         <Flame className="animate-spin text-[#2d6a4f] mb-2" size={32} />
         <p className="text-xs font-bold uppercase tracking-wider">Gathering Campfire Data...</p>
       </div>
@@ -415,7 +415,7 @@ export default function LiveMapPage() {
   }
 
   return (
-    <div className="-mt-16 h-screen w-screen bg-[#fdfbf7] flex flex-col overflow-hidden relative p-4 md:p-6 font-sans text-[#1c2826]">
+    <div className="h-screen w-screen bg-[#fdfbf7] flex flex-col overflow-hidden relative p-4 md:p-6 font-sans text-[#1c2826]">
       {/* CSS animations for premium graphics */}
       <style>{`
         @keyframes flicker {
