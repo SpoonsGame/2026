@@ -29,7 +29,7 @@ export interface GameState {
   gameStarted: boolean;
 }
 
-export const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbxT6O-DwB-cx7tvleAbcGmZ-Xp_J8Y9jH5g_CcVifv9KuCjZGy5vTrSd67ZlW1kiL0s/exec";
+export const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbxd7rhDoL4Zo7SDZB0IhD3Gh_yKgon1rg9e5WZU_oLmBDYk5U3QOyIWscGke7Gf51Q/exec";
 
 // 1. Add Player to Google Sheets Database
 export const addPlayerToSheet = async (firstName: string, lastName: string, pinCode: string): Promise<any> => {
