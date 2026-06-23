@@ -7,6 +7,7 @@ import {
   X, Check, Lock, Unlock, ArrowLeft, Key, Shuffle
 } from "lucide-react";
 import { Player, GameState, fetchStateFromRemote, addPlayerToSheet, eliminatePlayerInSheet, assignTargetInSheet } from "../spoonsApi";
+import Link from "next/link";
 
 // --- Toast Component ---
 const Toast = ({ message }: { message: string }) => (
@@ -486,9 +487,9 @@ export default function KillCamSettings() {
       <header className="sticky top-0 z-40 bg-white border-b border-[#dce6e1] px-6 py-4 shadow-sm">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <a href="/" className="text-slate-400 hover:text-slate-700 bg-slate-100 p-2 rounded-xl border border-slate-200">
+            <Link href="/" className="text-slate-400 hover:text-slate-700 bg-slate-100 p-2 rounded-xl border border-slate-200">
               <ArrowLeft size={16} />
-            </a>
+            </Link>
             <div>
               <h1 className="text-xl md:text-2xl font-black tracking-tight text-[#1b4332] flex items-center gap-1.5 leading-none">
                 KILL CAM <span className="text-[#2d6a4f] text-[9px] md:text-xs border border-[#b2d8c3] px-2 py-0.5 bg-[#e9f5ed] rounded font-black uppercase">GM PANELS</span>
