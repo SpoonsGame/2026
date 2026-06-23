@@ -29,7 +29,7 @@ export interface GameState {
   gameStarted: boolean;
 }
 
-export const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbxd7rhDoL4Zo7SDZB0IhD3Gh_yKgon1rg9e5WZU_oLmBDYk5U3QOyIWscGke7Gf51Q/exec";
+export const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbxGS_5Zr0RZtBrd744l9ohEBdJE-fmJb4dtJnQlgEA1Xr5SG5VT6_kWKkeFkUWtJk34/exec";
 
 // 1. Add Player to Google Sheets Database
 export const addPlayerToSheet = async (firstName: string, lastName: string, pinCode: string): Promise<any> => {
@@ -49,7 +49,7 @@ export const addPlayerToSheet = async (firstName: string, lastName: string, pinC
       },
       body: JSON.stringify(payload)
     });
-    
+
     if (response.ok) {
       const result = await response.json();
       console.log("Sheet addPlayer success:", result);
@@ -78,7 +78,7 @@ export const eliminatePlayerInSheet = async (targetPin: string, killerPin: strin
       },
       body: JSON.stringify(payload)
     });
-    
+
     if (response.ok) {
       const result = await response.json();
       console.log("Sheet eliminatePlayer success:", result);
@@ -108,7 +108,7 @@ export const assignTargetInSheet = async (firstName: string, lastName: string, t
       },
       body: JSON.stringify(payload)
     });
-    
+
     if (response.ok) {
       const result = await response.json();
       console.log("Sheet assignTarget success:", result);
