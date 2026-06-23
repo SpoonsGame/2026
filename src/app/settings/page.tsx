@@ -502,7 +502,7 @@ export default function KillCamSettings() {
             </Link>
             <div>
               <h1 className="text-xl md:text-2xl font-black tracking-tight text-[#1b4332] flex items-center gap-1.5 leading-none">
-                KILL CAM <span className="text-[#2d6a4f] text-[9px] md:text-xs border border-[#b2d8c3] px-2 py-0.5 bg-[#e9f5ed] rounded font-black uppercase">GM PANELS</span>
+                KILL CAM
               </h1>
               <p className="text-[10px] text-[#2d6a4f] font-bold uppercase tracking-widest leading-none mt-1">Admin Controls</p>
             </div>
@@ -517,7 +517,7 @@ export default function KillCamSettings() {
           <div className="max-w-md mx-auto bg-white border border-[#dce6e1] rounded-3xl p-8 shadow-sm text-center space-y-4">
             <Lock className="text-amber-600 mx-auto" size={36} />
             <div>
-              <h3 className="text-md font-black text-[#1b4332] uppercase tracking-tight">GM Password Required</h3>
+              <h3 className="text-md font-black text-[#1b4332] uppercase tracking-tight">Password</h3>
               <p className="text-xs text-slate-500 mt-1">
                 Access settings to configure players and toggle game phases.
               </p>
@@ -536,7 +536,7 @@ export default function KillCamSettings() {
                 type="submit"
                 className="w-full bg-[#1b4332] hover:bg-[#2d6a4f] text-white font-bold py-2.5 rounded-xl text-xs uppercase"
               >
-                Unlock Admin Settings
+                Sign in
               </button>
             </form>
           </div>

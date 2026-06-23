@@ -390,12 +390,8 @@ const KillLineageForest = ({ players, killLog }: { players: Player[]; killLog: K
     }>
 
       {/* Decorative Grid coordinates for HUD aesthetic */}
-      <div className="absolute top-2 left-4 text-[7px] font-mono text-[#2d6a4f]/40 pointer-events-none tracking-widest hidden md:block">
-        COORD // 44.3142° N, 71.9751° W // ALT 1,280M
-      </div>
-      <div className="absolute bottom-2 right-4 text-[7px] font-mono text-[#2d6a4f]/40 pointer-events-none tracking-widest hidden md:block">
-        SYS // GRID SEC-ALPHA // STATUS // GAME LIVE
-      </div>
+  
+
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 z-10">
         <div>
@@ -450,7 +446,7 @@ const KillLineageForest = ({ players, killLog }: { players: Player[]; killLog: K
           <div>
             <p className="text-xs font-black text-[#1b4332] uppercase">The Camp is Peaceful</p>
             <p className="text-[10px] text-slate-400 mt-1 max-w-xs mx-auto leading-relaxed">
-              No eliminations have been recorded yet. Campers can access their dossiers to log in and report spoon grabs once the hunt begins!
+              No eliminations have been recorded yet.
             </p>
           </div>
         </div>
@@ -861,7 +857,7 @@ export default function KillCamDashboard() {
 
     const hunter = gameState.players.find(p => p.targetId === victimId && !p.isDead);
     if (!hunter) {
-      showToast("⚠️ Could not find your active hunter. Contact the GM.");
+      showToast("⚠️ Could not find your active hunter. Contact Jonah.");
       return;
     }
 
@@ -1048,7 +1044,7 @@ export default function KillCamDashboard() {
         <div className="space-y-4">
           <div className="flex items-center gap-2 text-[#1b4332]">
             <Target size={20} />
-            <h3 className="text-md font-black uppercase tracking-tight">🔎 Access Your Dossier</h3>
+            <h3 className="text-md font-black uppercase tracking-tight">🔎 See your Target</h3>
           </div>
           <p className="text-xs text-slate-500 font-medium leading-relaxed">
             Check your secret target and self-report your elimination by signing in with your 4-digit PIN.
@@ -1061,7 +1057,7 @@ export default function KillCamDashboard() {
             }}
             className="w-full bg-[#1b4332] hover:bg-[#2d6a4f] text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider transition-all"
           >
-            Dossier Sign In
+            Sign In
           </button>
         </div>
       )}
