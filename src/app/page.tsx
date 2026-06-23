@@ -1264,25 +1264,16 @@ export default function KillCamDashboard() {
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="text-2xl">🥄</span>
-            <div>
-              <h1 className="text-xl md:text-2xl font-black tracking-tight text-[#1b4332] flex items-center gap-1.5 leading-none">
-                KILL CAM 
-                <span className="text-[9px] border border-emerald-300 text-emerald-700 bg-emerald-50 font-black uppercase px-2 py-0.5 rounded tracking-wider">
-                  🌲 Local Mode
-                </span>
-              </h1>
-              <p className="text-[10px] text-[#2d6a4f] font-bold uppercase tracking-widest leading-none mt-1">Spoons Camp Tracker</p>
-            </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <a
+            <Link
               href="/settings"
               className="bg-[#1b4332] hover:bg-[#2d6a4f] text-white font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-sm"
             >
               <Settings size={13} />
-              <span>GM Panel</span>
-            </a>
+              <span>Admin</span>
+            </Link>
           </div>
         </div>
       </header>
