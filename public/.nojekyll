@@ -1,0 +1,1 @@
+# Prevents GitHub Pages from running Jekyll build engine, allowing Next.js folders like _next to resolve.
