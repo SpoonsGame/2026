@@ -641,6 +641,42 @@ export default function KillCamDashboard() {
     gameStarted: false
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState(Date.now());
+
+  useEffect(() => {
+    if (!gameState.gameStarted) return;
+    const timer = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 10000); // update every 10 seconds
+    return () => clearInterval(timer);
+  }, [gameState.gameStarted]);
+
+  // Compute elapsed time in hours and minutes
+  const formattedElapsedTime = useMemo(() => {
+    if (!gameState.gameStarted || !gameState.gameStartTime) return "0h 0m";
+    const diffMs = currentTime - gameState.gameStartTime;
+    if (diffMs < 0) return "0h 0m";
+    const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    return `${diffHrs}h ${diffMins}m`;
+  }, [gameState.gameStarted, gameState.gameStartTime, currentTime]);
+
+  // Compute time since last kill
+  const formattedLastKillTime = useMemo(() => {
+    if (!gameState.gameStarted) return "No game active";
+    if (!gameState.lastKillTime || gameState.lastKillTime === 0) return "No kills yet";
+    const diffMs = currentTime - gameState.lastKillTime;
+    if (diffMs < 0) return "Just now";
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    if (diffMins < 1) return "Last kill: < 1m ago";
+    if (diffMins < 60) return `Last kill: ${diffMins}m ago`;
+    const diffHrs = Math.floor(diffMins / 60);
+    const remainingMins = diffMins % 60;
+    if (diffHrs < 24) return `Last kill: ${diffHrs}h ${remainingMins}m ago`;
+    const diffDays = Math.floor(diffHrs / 24);
+    return `Last kill: ${diffDays}d ago`;
+  }, [gameState.gameStarted, gameState.lastKillTime, currentTime]);
+
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Camper Signup Modal States
@@ -703,7 +739,9 @@ export default function KillCamDashboard() {
                 ...prev,
                 players: remoteState.players,
                 killLog: remoteState.killLog,
-                gameStarted: remoteState.gameStarted
+                gameStarted: remoteState.gameStarted,
+                gameStartTime: remoteState.gameStartTime,
+                lastKillTime: remoteState.lastKillTime
               };
               localStorage.setItem("spoons_local_gamestate_v8", JSON.stringify(merged));
               return merged;
@@ -899,10 +937,12 @@ export default function KillCamDashboard() {
       reason
     };
 
+    const killTime = Date.now();
     const updatedState: GameState = {
       ...gameState,
       players: updatedPlayers,
-      killLog: [...gameState.killLog, newLogEntry]
+      killLog: [...gameState.killLog, newLogEntry],
+      lastKillTime: killTime
     };
 
     await commitState(updatedState);
@@ -920,6 +960,10 @@ export default function KillCamDashboard() {
       const hunterFirst = hunterParts[0];
       const hunterLast = hunterParts.slice(1).join(" ") || "Camper";
       assignTargetInSheet(hunterFirst, hunterLast, targetName);
+
+      // Update metadata with new kill time
+      const startTime = gameState.gameStartTime || Date.now();
+      assignTargetInSheet("System", "Metadata", `START_${startTime}_LAST_${killTime}`);
     } catch (error) {
       console.error("Failed to sync self-reported elimination to Google Sheets:", error);
     }
@@ -958,7 +1002,7 @@ export default function KillCamDashboard() {
   };
 
   const renderStats = () => (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
       <div className="bg-white border border-[#dce6e1] rounded-2xl p-4 shadow-sm text-center">
         <p className="text-4xs text-[#2d6a4f] font-black uppercase tracking-wider">Survivors</p>
         <h4 className="text-xl font-black text-[#1b4332] mt-1">{alivePlayers.length}</h4>
@@ -975,6 +1019,14 @@ export default function KillCamDashboard() {
         <p className="text-4xs text-amber-500 font-black uppercase tracking-wider">Spooned Today</p>
         <h4 className="text-xl font-black text-amber-600 mt-1">{deadTodayCount}</h4>
         <p className="text-[8px] text-slate-400 mt-0.5">recent</p>
+      </div>
+
+      <div className="bg-white border border-[#dce6e1] rounded-2xl p-4 shadow-sm text-center flex flex-col justify-between min-h-[82px]">
+        <div>
+          <p className="text-4xs text-emerald-600 font-black uppercase tracking-wider">Game Duration</p>
+          <h4 className="text-xl font-black text-[#1b4332] mt-1">{formattedElapsedTime}</h4>
+        </div>
+        <p className="text-[7.5px] text-slate-400 font-bold uppercase tracking-wider mt-0.5 truncate">{formattedLastKillTime}</p>
       </div>
     </div>
   );

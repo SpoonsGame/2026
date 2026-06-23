@@ -27,6 +27,8 @@ export interface GameState {
   killLog: KillLogEntry[];
   signUpEnabled: boolean;
   gameStarted: boolean;
+  gameStartTime?: number;
+  lastKillTime?: number;
 }
 
 export const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbxGS_5Zr0RZtBrd744l9ohEBdJE-fmJb4dtJnQlgEA1Xr5SG5VT6_kWKkeFkUWtJk34/exec";
@@ -254,11 +256,30 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
     });
   }
 
+  // Find system player and extract metadata
+  const systemPlayer = mappedPlayers.find(p => p.name === "System Metadata");
+  let gameStartTime: number | undefined = undefined;
+  let lastKillTime: number | undefined = undefined;
+
+  if (systemPlayer) {
+    const targetPin = (systemPlayer as any).targetPin || "";
+    if (targetPin.startsWith("START_")) {
+      const parts = targetPin.split("_");
+      if (parts[1]) gameStartTime = parseInt(parts[1], 10);
+      if (parts[3]) lastKillTime = parseInt(parts[3], 10);
+    }
+  }
+
+  // Remove System Metadata player from final players list
+  const filteredMappedPlayers = mappedPlayers.filter(p => p.name !== "System Metadata");
+
   return {
-    players: mappedPlayers,
+    players: filteredMappedPlayers,
     killLog: finalKillLog,
     signUpEnabled: true,
-    gameStarted: mappedPlayers.some(p => p.targetId !== null)
+    gameStarted: filteredMappedPlayers.some(p => p.targetId !== null),
+    gameStartTime,
+    lastKillTime
   };
 };
 

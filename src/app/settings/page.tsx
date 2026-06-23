@@ -74,7 +74,9 @@ export default function KillCamSettings() {
                 ...prev,
                 players: remoteState.players,
                 killLog: remoteState.killLog,
-                gameStarted: remoteState.gameStarted
+                gameStarted: remoteState.gameStarted,
+                gameStartTime: remoteState.gameStartTime,
+                lastKillTime: remoteState.lastKillTime
               };
               localStorage.setItem("spoons_local_gamestate_v8", JSON.stringify(merged));
               return merged;
@@ -324,11 +326,14 @@ export default function KillCamSettings() {
       return sp ? sp : bp;
     });
 
+    const startTime = Date.now();
     const updated: GameState = {
       players: finalPlayers,
       killLog: [],
       signUpEnabled: false, // Close signups automatically on start
-      gameStarted: true
+      gameStarted: true,
+      gameStartTime: startTime,
+      lastKillTime: 0
     };
 
     await commitState(updated);
@@ -336,6 +341,9 @@ export default function KillCamSettings() {
 
     // Sync all target assignments to Google Sheets
     try {
+      // Sync game start time to Sheets via System Metadata player
+      await assignTargetInSheet("System", "Metadata", `START_${startTime}_LAST_0`);
+
       finalPlayers.forEach(p => {
         const target = finalPlayers.find(t => t.id === p.targetId);
         const targetName = target ? target.name : "None";
@@ -739,10 +747,12 @@ export default function KillCamSettings() {
                                   <button
                                     onClick={() => {
                                       if (window.confirm(`Force eliminate ${p.name}?`)) {
+                                        const killTime = Date.now();
                                         const updatedPlayers = gameState.players.map(x => x.id === p.id ? { ...x, isDead: true, eliminatedBy: "GM Override", killDate: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }), deathReason: "Eliminated by Game Master" } : x);
                                         commitState({
                                           ...gameState,
-                                          players: updatedPlayers
+                                          players: updatedPlayers,
+                                          lastKillTime: killTime
                                         });
                                         showToast(`💀 Eliminated ${p.name}`);
 
@@ -752,6 +762,9 @@ export default function KillCamSettings() {
                                           const hunter = gameState.players.find(x => x.targetId === victim.id && !x.isDead);
                                           const killerPin = hunter ? hunter.pin : "0000";
                                           eliminatePlayerInSheet(victim.pin, killerPin);
+
+                                          const startTime = gameState.gameStartTime || Date.now();
+                                          assignTargetInSheet("System", "Metadata", `START_${startTime}_LAST_${killTime}`);
                                         } catch (error) {
                                           console.error("Failed to sync GM force elimination to Google Sheets:", error);
                                         }
