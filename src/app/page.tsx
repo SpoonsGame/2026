@@ -38,11 +38,11 @@ const CampfireGraphic = () => (
   <div className="relative w-24 h-24 mx-auto flex items-end justify-center pb-4">
     {/* Glow base */}
     <div className="absolute inset-0 bg-radial-gradient from-amber-500/20 to-transparent blur-xl rounded-full" />
-    
+
     {/* Logs */}
     <div className="absolute w-10 h-2 bg-amber-900/60 rounded-full rotate-12 translate-y-1" />
     <div className="absolute w-10 h-2 bg-amber-950/80 rounded-full -rotate-12 translate-y-1" />
-    
+
     {/* Flames */}
     <div className="flex items-end gap-0.5 z-10">
       <div className="w-2.5 h-12 bg-gradient-to-t from-red-600 via-amber-500 to-yellow-300 rounded-full animate-flicker opacity-90" />
@@ -355,10 +355,10 @@ const KillLineageForest = ({ players, killLog }: { players: Player[]; killLog: K
 
   // Find parents to draw paths
   const connectionPaths = useMemo(() => {
-    const paths: { 
-      from: { x: number; y: number; name: string }; 
-      to: { x: number; y: number; name: string }; 
-      key: string 
+    const paths: {
+      from: { x: number; y: number; name: string };
+      to: { x: number; y: number; name: string };
+      key: string
     }[] = [];
     layoutNodes.forEach(node => {
       if (node.parentId) {
@@ -384,11 +384,11 @@ const KillLineageForest = ({ players, killLog }: { players: Player[]; killLog: K
   const hasHighlight = hoveredName !== null;
 
   return (
-    <div className={isFullScreen 
+    <div className={isFullScreen
       ? "fixed inset-0 z-[48] p-6 bg-[#fdfbf7] w-screen h-screen flex flex-col overflow-hidden"
       : "bg-white border border-[#dce6e1] rounded-3xl p-5 shadow-xs space-y-4 overflow-hidden relative flex flex-col"
     }>
-      
+
       {/* Decorative Grid coordinates for HUD aesthetic */}
       <div className="absolute top-2 left-4 text-[7px] font-mono text-[#2d6a4f]/40 pointer-events-none tracking-widest hidden md:block">
         COORD // 44.3142° N, 71.9751° W // ALT 1,280M
@@ -401,7 +401,7 @@ const KillLineageForest = ({ players, killLog }: { players: Player[]; killLog: K
         <div>
           <h3 className="text-xs font-black text-[#1b4332] uppercase tracking-wider flex items-center gap-1.5">
             <Flame size={14} className="text-[#2d6a4f]" />
-            TACTICAL LINEAGE INTERACTIVE MAP
+            Killings Map
           </h3>
           <p className="text-[10px] text-slate-400">
             Drag to pan. Pinch or Ctrl+scroll to zoom. Tap cards to highlight streams.
@@ -461,13 +461,11 @@ const KillLineageForest = ({ players, killLog }: { players: Player[]; killLog: K
             🖐️ Drag to explore map
           </div>
 
-          <div 
+          <div
             ref={containerRef}
-            className={`rounded-2xl border border-[#dce6e1]/60 bg-[#FAF9F5] overflow-hidden select-none relative ${
-              isFullScreen ? "flex-1 w-full" : "h-[480px]"
-            } ${
-              isDragging ? "cursor-grabbing" : "cursor-grab"
-            }`}
+            className={`rounded-2xl border border-[#dce6e1]/60 bg-[#FAF9F5] overflow-hidden select-none relative ${isFullScreen ? "flex-1 w-full" : "h-[480px]"
+              } ${isDragging ? "cursor-grabbing" : "cursor-grab"
+              }`}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUpOrLeave}
@@ -480,7 +478,7 @@ const KillLineageForest = ({ players, killLog }: { players: Player[]; killLog: K
             onTouchEnd={handleTouchEnd}
           >
             {/* Translated wrapper for Google-maps drag panning */}
-            <div 
+            <div
               className="absolute origin-top-left transition-transform duration-75 ease-out grid-backdrop"
               style={{
                 width: `${canvasWidth}px`,
@@ -554,9 +552,9 @@ const KillLineageForest = ({ players, killLog }: { players: Player[]; killLog: K
                   const killCount = players.filter(p => p.isDead && p.eliminatedBy === node.name).length;
                   const isCardHighlighted = hasHighlight && activeLineageNames.has(node.name);
                   const cardOpacity = hasHighlight ? (isCardHighlighted ? "1" : "0.2") : "1";
-                  
+
                   // Compute victim order badge index if dead
-                  const victimIndex = isDead && node.eliminatedBy 
+                  const victimIndex = isDead && node.eliminatedBy
                     ? getVictimOrdinal(node.name, node.eliminatedBy, players, killLog)
                     : undefined;
 
@@ -564,8 +562,8 @@ const KillLineageForest = ({ players, killLog }: { players: Player[]; killLog: K
                     <div
                       key={node.id}
                       className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer"
-                      style={{ 
-                        left: `${node.x}px`, 
+                      style={{
+                        left: `${node.x}px`,
                         top: `${node.y}px`,
                         opacity: cardOpacity,
                         transition: "opacity 0.4s ease, transform 0.3s ease"
@@ -576,34 +574,31 @@ const KillLineageForest = ({ players, killLog }: { players: Player[]; killLog: K
                         setHoveredName(node.name);
                       }}
                     >
-                      <div className={`w-[160px] h-[76px] px-3 py-2 rounded-2xl border text-left relative select-none flex items-center gap-2.5 transition-all hover:scale-105 hover:shadow-md ${
-                        isDead 
-                          ? "bg-gradient-to-b from-[#fbfbfa] to-[#f4f2eb] border-slate-200 text-slate-400 opacity-80" 
+                      <div className={`w-[160px] h-[76px] px-3 py-2 rounded-2xl border text-left relative select-none flex items-center gap-2.5 transition-all hover:scale-105 hover:shadow-md ${isDead
+                          ? "bg-gradient-to-b from-[#fbfbfa] to-[#f4f2eb] border-slate-200 text-slate-400 opacity-80"
                           : "bg-gradient-to-b from-[#fdfbf7] via-[#faf7ee] to-[#f4efe0] border-amber-400 text-[#1b4332] shadow-sm ring-1 ring-amber-300/40"
-                      }`}>
+                        }`}>
                         {/* Active survivor pulsing background sonar rings */}
                         {!isDead && (
                           <div className="absolute inset-0 rounded-2xl bg-amber-400/5 animate-ping pointer-events-none scale-105" />
                         )}
 
                         {/* Initials Avatar chip */}
-                        <div className={`w-8 h-8 rounded-full shrink-0 flex items-center justify-center font-black text-2xs border relative ${
-                          isDead 
-                            ? "bg-slate-100 border-slate-200 text-slate-400 line-through" 
+                        <div className={`w-8 h-8 rounded-full shrink-0 flex items-center justify-center font-black text-2xs border relative ${isDead
+                            ? "bg-slate-100 border-slate-200 text-slate-400 line-through"
                             : "bg-gradient-to-tr from-[#1b4332] to-[#2d6a4f] border-amber-300 text-white shadow-sm"
-                        }`}>
+                          }`}>
                           {node.name.slice(0, 2).toUpperCase()}
-                          
+
                           {/* Alive / Dead status ring indicator */}
-                          <span className={`absolute bottom-0 right-0 w-2 h-2 rounded-full border border-white ${
-                            isDead ? "bg-rose-500" : "bg-emerald-500"
-                          }`} />
+                          <span className={`absolute bottom-0 right-0 w-2 h-2 rounded-full border border-white ${isDead ? "bg-rose-500" : "bg-emerald-500"
+                            }`} />
                         </div>
 
                         {/* Info column */}
                         <div className="flex flex-col min-w-0 flex-1 justify-center leading-tight">
                           <span className="font-extrabold text-[10px] text-slate-800 truncate w-full">{node.name}</span>
-                          
+
                           {!isDead ? (
                             <div className="flex flex-col gap-0.5 mt-0.5">
                               {killCount > 0 ? (
@@ -772,7 +767,7 @@ export default function KillCamDashboard() {
 
   const alivePlayers = useMemo(() => gameState.players.filter(p => !p.isDead), [gameState.players]);
   const deadPlayers = useMemo(() => gameState.players.filter(p => p.isDead), [gameState.players]);
-  
+
   const isGameOver = useMemo(() => gameState.gameStarted && alivePlayers.length === 1 && gameState.players.length >= 2, [gameState.players, alivePlayers, gameState.gameStarted]);
   const winner = useMemo(() => isGameOver ? alivePlayers[0] : null, [isGameOver, alivePlayers]);
 
@@ -852,7 +847,7 @@ export default function KillCamDashboard() {
   const handleCamperSignOut = () => {
     setCamperSession(null);
     sessionStorage.removeItem("spoons_camper_session");
-    showToast("👋 Signed out of dossier.");
+    showToast("👋 Signed out.");
   };
 
   // Camper Self-Report Death Confirm
@@ -971,7 +966,7 @@ export default function KillCamDashboard() {
       <div className="bg-white border border-[#dce6e1] rounded-2xl p-4 shadow-sm text-center">
         <p className="text-4xs text-[#2d6a4f] font-black uppercase tracking-wider">Survivors</p>
         <h4 className="text-xl font-black text-[#1b4332] mt-1">{alivePlayers.length}</h4>
-        <p className="text-[8px] text-slate-400 mt-0.5">/{gameState.players.length}</p>
+        <p className="text-[8px] text-slate-400 mt-0.7">/{gameState.players.length}</p>
       </div>
 
       <div className="bg-white border border-[#dce6e1] rounded-2xl p-4 shadow-sm text-center">
@@ -998,7 +993,7 @@ export default function KillCamDashboard() {
           <div className="flex justify-between items-center border-b border-[#dce6e1]/40 pb-2 relative z-10">
             <div className="flex items-center gap-1.5">
               <span>{getCampEmoji(camperSession.name)}</span>
-              <h3 className="font-extrabold text-[#1b4332] text-sm uppercase">Dossier: {camperSession.name}</h3>
+              <h3 className="font-extrabold text-[#1b4332] text-sm uppercase">{camperSession.name}</h3>
             </div>
             <button
               onClick={handleCamperSignOut}
@@ -1043,7 +1038,7 @@ export default function KillCamDashboard() {
                 onClick={handleCamperSignOut}
                 className="w-full mt-3 bg-slate-100 hover:bg-slate-200 border border-[#dce6e1] text-slate-700 font-extrabold py-2.5 rounded-xl text-[10px] uppercase tracking-wider transition-all"
               >
-                Sign Out of Dossier
+                Sign Out
               </button>
             </div>
           )}
@@ -1081,7 +1076,7 @@ export default function KillCamDashboard() {
     <div className="bg-white border border-[#dce6e1] rounded-3xl p-6 shadow-sm">
       <h3 className="text-xs font-black text-[#1b4332] uppercase tracking-widest mb-4 flex items-center gap-1.5">
         <Flame className="text-amber-500 fill-amber-500/20" size={14} />
-        THE CAMPFIRE CHRONICLES (KILL FEED)
+        KILL FEED
       </h3>
 
       <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
@@ -1099,7 +1094,7 @@ export default function KillCamDashboard() {
                 <span className="text-[11px] text-slate-700 font-extrabold">{log.killerName}</span>
                 <span className="text-[9px] text-slate-400 font-semibold">{log.date}</span>
               </div>
-              
+
               <div className="text-[10px] text-rose-700 font-medium flex items-center gap-0.5">
                 spooned <ArrowRight size={10} /> <span className="font-bold">{log.victimName}</span>
               </div>
@@ -1116,7 +1111,7 @@ export default function KillCamDashboard() {
       <div className="bg-white border border-[#dce6e1] rounded-3xl p-6 shadow-sm">
         <h3 className="text-xs font-black text-[#1b4332] uppercase tracking-widest mb-4 flex items-center gap-1.5">
           <Skull className="text-rose-500" size={14} />
-          SPOON GRAVEYARD ({deadPlayers.length})
+          GRAVEYARD ({deadPlayers.length})
         </h3>
 
         <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1">
@@ -1204,7 +1199,7 @@ export default function KillCamDashboard() {
 
   return (
     <div className="min-h-screen bg-[#fdfbf7] text-[#1c2826] font-sans pb-16 relative">
-      
+
       {/* CSS animations for premium graphics */}
       <style>{`
         @keyframes flicker {
@@ -1275,7 +1270,6 @@ export default function KillCamDashboard() {
               className="bg-[#1b4332] hover:bg-[#2d6a4f] text-white font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-sm"
             >
               <Settings size={13} />
-              <span>Admin</span>
             </Link>
           </div>
         </div>
@@ -1284,7 +1278,7 @@ export default function KillCamDashboard() {
       {/* 1. JOIN GAME PHASE */}
       {!gameState.gameStarted ? (
         <main className="max-w-xl mx-auto px-4 pt-16 text-center space-y-8">
-          
+
           <div className="space-y-4">
             <CampfireGraphic />
             <h2 className="text-3xl font-black tracking-tight text-[#1b4332] uppercase">Join the Spoons Circle!</h2>
@@ -1315,7 +1309,7 @@ export default function KillCamDashboard() {
               <span>Camper Roster ({gameState.players.length})</span>
               <span className="text-slate-400 lowercase font-medium">awaiting start</span>
             </h4>
-            
+
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
               {gameState.players.length === 0 ? (
                 <p className="text-xs text-slate-400 italic py-4 col-span-full text-center">No campers signed up yet.</p>
@@ -1334,12 +1328,12 @@ export default function KillCamDashboard() {
       ) : (
         /* 2. LIVE STATS PHASE */
         <main className="max-w-6xl mx-auto px-4 md:px-6 pt-6">
-          
+
           {/* Champion Alert (shared across view modes) */}
           {renderWinner()}
-          
+
           <div className="mt-6">
-            
+
             {/* DESKTOP-ONLY LAYOUT (2 Columns) */}
             <div className="hidden lg:grid grid-cols-12 gap-6 items-start">
               <div className="col-span-7 space-y-6">
@@ -1518,21 +1512,6 @@ export default function KillCamDashboard() {
                   Confirm your elimination. Since target loops are tracked, your active hunter is automatically set as your killer.
                 </p>
 
-                <div className="bg-[#fdfbf7] border border-[#dce6e1] rounded-xl p-4 text-center">
-                  <span className="block text-4xs font-black text-slate-400 uppercase tracking-widest mb-1">Your Killer (Hunter)</span>
-                  {(() => {
-                    const hunter = gameState.players.find(p => p.targetId === camperSession.id && !p.isDead);
-                    return hunter ? (
-                      <span className="font-extrabold text-[#1b4332] text-sm">{hunter.name}</span>
-                    ) : (
-                      <span className="font-extrabold text-rose-600 text-xs">No Active Hunter Found</span>
-                    );
-                  })()}
-                </div>
-
-                <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 text-[10px] text-rose-800 leading-relaxed">
-                  <strong>⚠️ Permanent Surrender:</strong> Submitting will mark you as dead, log the kill under your hunter's name, and connect them directly to your target.
-                </div>
 
                 <div className="flex gap-2">
                   <button
