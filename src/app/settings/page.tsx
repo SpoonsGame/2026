@@ -33,7 +33,12 @@ export default function KillCamSettings() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Authentication
-  const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
+  const [isAdminUnlocked, setIsAdminUnlocked] = useState(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("spoons_admin_unlocked") === "true";
+    }
+    return false;
+  });
   const [adminPinInput, setAdminPinInput] = useState("");
 
   // CRUD & Edits
@@ -76,7 +81,8 @@ export default function KillCamSettings() {
                 killLog: remoteState.killLog,
                 gameStarted: remoteState.gameStarted,
                 gameStartTime: remoteState.gameStartTime,
-                lastKillTime: remoteState.lastKillTime
+                lastKillTime: remoteState.lastKillTime,
+                deathTimes: remoteState.deathTimes
               };
               localStorage.setItem("spoons_local_gamestate_v8", JSON.stringify(merged));
               return merged;
@@ -134,6 +140,7 @@ export default function KillCamSettings() {
     e.preventDefault();
     if (adminPinInput === "swedishpaddle4life") {
       setIsAdminUnlocked(true);
+      sessionStorage.setItem("spoons_admin_unlocked", "true");
       setAdminPinInput("");
       showToast("🔑 Settings Dashboard unlocked!");
     } else {
@@ -748,11 +755,16 @@ export default function KillCamSettings() {
                                     onClick={() => {
                                       if (window.confirm(`Force eliminate ${p.name}?`)) {
                                         const killTime = Date.now();
+                                        const updatedDeathTimes = {
+                                          ...(gameState.deathTimes || {}),
+                                          [p.id]: killTime
+                                        };
                                         const updatedPlayers = gameState.players.map(x => x.id === p.id ? { ...x, isDead: true, eliminatedBy: "GM Override", killDate: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }), deathReason: "Eliminated by Game Master" } : x);
                                         commitState({
                                           ...gameState,
                                           players: updatedPlayers,
-                                          lastKillTime: killTime
+                                          lastKillTime: killTime,
+                                          deathTimes: updatedDeathTimes
                                         });
                                         showToast(`💀 Eliminated ${p.name}`);
 
@@ -764,7 +776,10 @@ export default function KillCamSettings() {
                                           eliminatePlayerInSheet(victim.pin, killerPin);
 
                                           const startTime = gameState.gameStartTime || Date.now();
-                                          assignTargetInSheet("System", "Metadata", `START_${startTime}_LAST_${killTime}`);
+                                          const deathsStr = Object.entries(updatedDeathTimes)
+                                            .map(([pid, ts]) => `${pid}:${ts}`)
+                                            .join(",");
+                                          assignTargetInSheet("System", "Metadata", `START_${startTime}_LAST_${killTime}_DEATHS_${deathsStr}`);
                                         } catch (error) {
                                           console.error("Failed to sync GM force elimination to Google Sheets:", error);
                                         }
@@ -876,6 +891,7 @@ export default function KillCamSettings() {
                 <button
                   onClick={() => {
                     setIsAdminUnlocked(false);
+                    sessionStorage.removeItem("spoons_admin_unlocked");
                   }}
                   className="block mx-auto mt-2 text-[#2d6a4f] hover:text-[#1b4332]"
                 >

@@ -98,13 +98,15 @@ const buildLineageTrees = (players: Player[], killLog: KillLogEntry[]): TreeNode
     }
   });
 
-  // Roots of lineages: Active alive players who have made kills (hiding alive players with 0 kills to keep empty at start)
+  // Roots of lineages: Players who have made kills and have no parent in the forest
   const roots: TreeNode[] = [];
   players.forEach(p => {
     const node = nodesMap[p.name];
-    const isRoot = !p.isDead;
-    if (isRoot && node.children.length > 0) {
-      roots.push(node);
+    if (node.children.length > 0) {
+      const hasParent = p.isDead && p.eliminatedBy && nodesMap[p.eliminatedBy];
+      if (!hasParent) {
+        roots.push(node);
+      }
     }
   });
 
@@ -212,8 +214,8 @@ const KillLineageForest = ({ players, killLog }: { players: Player[]; killLog: K
   const trees = useMemo(() => buildLineageTrees(players, killLog), [players, killLog]);
 
   const hasAnyKills = useMemo(() => {
-    return trees.length > 0;
-  }, [trees]);
+    return players.some(p => p.isDead);
+  }, [players]);
 
   const maxDepth = useMemo(() => {
     if (trees.length === 0) return 0;
@@ -741,7 +743,8 @@ export default function KillCamDashboard() {
                 killLog: remoteState.killLog,
                 gameStarted: remoteState.gameStarted,
                 gameStartTime: remoteState.gameStartTime,
-                lastKillTime: remoteState.lastKillTime
+                lastKillTime: remoteState.lastKillTime,
+                deathTimes: remoteState.deathTimes
               };
               localStorage.setItem("spoons_local_gamestate_v8", JSON.stringify(merged));
               return merged;
@@ -779,7 +782,7 @@ export default function KillCamDashboard() {
 
   // Sync camperSession state with latest gameState changes
   useEffect(() => {
-    if (camperSession) {
+    if (camperSession && gameState.players.length > 0) {
       const latestPlayer = gameState.players.find(p => p.id === camperSession.id);
       if (latestPlayer) {
         if (latestPlayer.isDead !== camperSession.isDead || latestPlayer.targetId !== camperSession.targetId || latestPlayer.name !== camperSession.name) {
@@ -938,11 +941,16 @@ export default function KillCamDashboard() {
     };
 
     const killTime = Date.now();
+    const updatedDeathTimes = {
+      ...(gameState.deathTimes || {}),
+      [victimId]: killTime
+    };
     const updatedState: GameState = {
       ...gameState,
       players: updatedPlayers,
       killLog: [...gameState.killLog, newLogEntry],
-      lastKillTime: killTime
+      lastKillTime: killTime,
+      deathTimes: updatedDeathTimes
     };
 
     await commitState(updatedState);
@@ -961,9 +969,12 @@ export default function KillCamDashboard() {
       const hunterLast = hunterParts.slice(1).join(" ") || " ";
       assignTargetInSheet(hunterFirst, hunterLast, targetName);
 
-      // Update metadata with new kill time
+      // Update metadata with new kill time and death log
       const startTime = gameState.gameStartTime || Date.now();
-      assignTargetInSheet("System", "Metadata", `START_${startTime}_LAST_${killTime}`);
+      const deathsStr = Object.entries(updatedDeathTimes)
+        .map(([pid, ts]) => `${pid}:${ts}`)
+        .join(",");
+      assignTargetInSheet("System", "Metadata", `START_${startTime}_LAST_${killTime}_DEATHS_${deathsStr}`);
     } catch (error) {
       console.error("Failed to sync self-reported elimination to Google Sheets:", error);
     }
@@ -1099,7 +1110,7 @@ export default function KillCamDashboard() {
             <h3 className="text-md font-black uppercase tracking-tight">🔎 See your Target</h3>
           </div>
           <p className="text-xs text-slate-500 font-medium leading-relaxed">
-            Check your secret target and self-report your elimination by signing in with your 4-digit PIN.
+            Check your target and self-report your elimination by signing in with your 4-digit PIN.
           </p>
           <button
             onClick={() => {
@@ -1452,7 +1463,7 @@ export default function KillCamDashboard() {
                   <div>
                     <h5 className="font-extrabold text-[#1b4332] text-xs uppercase">Player Joined!</h5>
                     <p className="text-[10px] text-slate-500 mt-1">
-                      Welcome, {signUpSuccessCredentials.name}. Below is your unique secret PIN. Write this down; you will need it.
+                      Welcome, {signUpSuccessCredentials.name}. Below is your unique PIN. Write this down; you will need it.
                     </p>
                   </div>
                   <div className="bg-[#e9f5ed] border border-[#b2d8c3] rounded-xl py-3 text-lg font-black text-[#1b4332] tracking-widest">
@@ -1511,7 +1522,7 @@ export default function KillCamDashboard() {
                 </div>
 
                 <div>
-                  <label className="block text-4xs font-black text-[#2d6a4f] uppercase tracking-widest mb-1">Enter Secret PIN</label>
+                  <label className="block text-4xs font-black text-[#2d6a4f] uppercase tracking-widest mb-1">Enter your PIN</label>
                   <input
                     type="password"
                     maxLength={4}

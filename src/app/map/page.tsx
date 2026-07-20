@@ -88,13 +88,15 @@ const buildLineageTrees = (players: Player[], killLog: KillLogEntry[]): TreeNode
     }
   });
 
-  // Roots of lineages: Active alive players who have made kills
+  // Roots of lineages: Players who have made kills and have no parent in the forest
   const roots: TreeNode[] = [];
   players.forEach(p => {
     const node = nodesMap[p.name];
-    const isRoot = !p.isDead;
-    if (isRoot && node.children.length > 0) {
-      roots.push(node);
+    if (node.children.length > 0) {
+      const hasParent = p.isDead && p.eliminatedBy && nodesMap[p.eliminatedBy];
+      if (!hasParent) {
+        roots.push(node);
+      }
     }
   });
 
@@ -255,8 +257,8 @@ export default function LiveMapPage() {
   const trees = useMemo(() => buildLineageTrees(gameState.players, gameState.killLog), [gameState.players, gameState.killLog]);
 
   const hasAnyKills = useMemo(() => {
-    return trees.length > 0;
-  }, [trees]);
+    return gameState.players.some(p => p.isDead);
+  }, [gameState.players]);
 
   const maxDepth = useMemo(() => {
     if (trees.length === 0) return 0;

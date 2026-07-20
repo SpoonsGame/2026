@@ -29,6 +29,7 @@ export interface GameState {
   gameStarted: boolean;
   gameStartTime?: number;
   lastKillTime?: number;
+  deathTimes?: Record<string, number>;
 }
 
 export const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbxGS_5Zr0RZtBrd744l9ohEBdJE-fmJb4dtJnQlgEA1Xr5SG5VT6_kWKkeFkUWtJk34/exec";
@@ -267,6 +268,7 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
   const systemPlayer = mappedPlayers.find(p => p.name === "System Metadata");
   let gameStartTime: number | undefined = undefined;
   let lastKillTime: number | undefined = undefined;
+  const deathTimesMap: Record<string, number> = {};
 
   if (systemPlayer) {
     const targetPin = (systemPlayer as any).targetPin || "";
@@ -274,11 +276,51 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
       const parts = targetPin.split("_");
       if (parts[1]) gameStartTime = parseInt(parts[1], 10);
       if (parts[3]) lastKillTime = parseInt(parts[3], 10);
+
+      const deathsIndex = targetPin.indexOf("_DEATHS_");
+      if (deathsIndex !== -1) {
+        const deathsStr = targetPin.substring(deathsIndex + 8);
+        const pairs = deathsStr.split(",");
+        pairs.forEach((pair: string) => {
+          const [pid, tsStr] = pair.split(":");
+          if (pid && tsStr) {
+            deathTimesMap[pid] = parseInt(tsStr, 10);
+          }
+        });
+      }
     }
   }
 
   // Remove System Metadata player from final players list
   const filteredMappedPlayers = mappedPlayers.filter(p => p.name !== "System Metadata");
+
+  // Assign killDate for each dead player using deathTimesMap
+  filteredMappedPlayers.forEach(p => {
+    if (p.isDead) {
+      const ts = deathTimesMap[p.id];
+      if (ts) {
+        p.killDate = new Date(ts).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+      } else {
+        p.killDate = "Recent";
+      }
+    }
+  });
+
+  // Re-map the date in finalKillLog using the updated player killDates
+  finalKillLog.forEach(log => {
+    if (log.id.startsWith("reconstructed-")) {
+      const victimName = log.victimName;
+      const player = filteredMappedPlayers.find(p => p.name === victimName);
+      if (player && player.killDate) {
+        log.date = player.killDate;
+      }
+    }
+  });
 
   return {
     players: filteredMappedPlayers,
@@ -286,7 +328,8 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
     signUpEnabled: true,
     gameStarted: filteredMappedPlayers.some(p => p.targetId !== null),
     gameStartTime,
-    lastKillTime
+    lastKillTime,
+    deathTimes: deathTimesMap
   };
 };
 
