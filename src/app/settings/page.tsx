@@ -187,7 +187,7 @@ export default function KillCamSettings() {
     try {
       const parts = name.split(" ");
       const firstName = parts[0];
-      const lastName = parts.slice(1).join(" ") || "Camper";
+      const lastName = parts.slice(1).join(" ") || "";
       addPlayerToSheet(firstName, lastName, pin);
     } catch (error) {
       console.error("Failed to sync individual player creation to Sheets:", error);
@@ -237,7 +237,7 @@ export default function KillCamSettings() {
         addedPlayers.forEach(p => {
           const parts = p.name.split(" ");
           const firstName = parts[0];
-          const lastName = parts.slice(1).join(" ") || "Camper";
+          const lastName = parts.slice(1).join(" ") || "";
           addPlayerToSheet(firstName, lastName, p.pin);
         });
       } catch (error) {
@@ -290,7 +290,7 @@ export default function KillCamSettings() {
 
         const hunterParts = hunter.name.split(" ");
         const hunterFirst = hunterParts[0];
-        const hunterLast = hunterParts.slice(1).join(" ") || "Camper";
+        const hunterLast = hunterParts.slice(1).join(" ") || "";
         assignTargetInSheet(hunterFirst, hunterLast, targetName);
       }
     } catch (error) {
@@ -349,7 +349,7 @@ export default function KillCamSettings() {
         const targetName = target ? target.name : "None";
         const parts = p.name.split(" ");
         const firstName = parts[0];
-        const lastName = parts.slice(1).join(" ") || "Camper";
+        const lastName = parts.slice(1).join(" ") || "";
         assignTargetInSheet(firstName, lastName, targetName);
       });
     } catch (error) {
@@ -385,7 +385,7 @@ export default function KillCamSettings() {
       resetPlayers.forEach(p => {
         const parts = p.name.split(" ");
         const firstName = parts[0];
-        const lastName = parts.slice(1).join(" ") || "Camper";
+        const lastName = parts.slice(1).join(" ") || "";
         assignTargetInSheet(firstName, lastName, "None");
       });
     } catch (error) {
@@ -451,14 +451,14 @@ export default function KillCamSettings() {
       const targetName = target ? target.name : "None";
       const parts = victim.name.split(" ");
       const firstName = parts[0];
-      const lastName = parts.slice(1).join(" ") || "Camper";
+      const lastName = parts.slice(1).join(" ") || "";
       assignTargetInSheet(firstName, lastName, targetName);
 
       // 2. Active hunter targets the revived player
       if (activeHunter) {
         const hunterParts = activeHunter.name.split(" ");
         const hunterFirst = hunterParts[0];
-        const hunterLast = hunterParts.slice(1).join(" ") || "Camper";
+        const hunterLast = hunterParts.slice(1).join(" ") || "";
         assignTargetInSheet(hunterFirst, hunterLast, victim.name);
       }
     } catch (error) {

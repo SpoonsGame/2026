@@ -851,7 +851,7 @@ export default function KillCamDashboard() {
     try {
       const parts = name.split(" ");
       const firstName = parts[0];
-      const lastName = parts.slice(1).join(" ") || "Camper";
+      const lastName = parts.slice(1).join(" ") || "";
       addPlayerToSheet(firstName, lastName, pin);
     } catch (error) {
       console.error("Failed to sync new player to Google Sheets:", error);
@@ -958,7 +958,7 @@ export default function KillCamDashboard() {
 
       const hunterParts = hunter.name.split(" ");
       const hunterFirst = hunterParts[0];
-      const hunterLast = hunterParts.slice(1).join(" ") || "Camper";
+      const hunterLast = hunterParts.slice(1).join(" ") || "";
       assignTargetInSheet(hunterFirst, hunterLast, targetName);
 
       // Update metadata with new kill time
@@ -1344,7 +1344,7 @@ export default function KillCamDashboard() {
             </button>
           ) : (
             <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 text-xs font-bold text-amber-800 max-w-xs mx-auto">
-              🔒 Sign-ups closed by Game Master.
+              🔒 Sign-ups closed.
             </div>
           )}
 
@@ -1357,7 +1357,7 @@ export default function KillCamDashboard() {
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
               {gameState.players.length === 0 ? (
-                <p className="text-xs text-slate-400 italic py-4 col-span-full text-center">No campers signed up yet.</p>
+                <p className="text-xs text-slate-400 italic py-4 col-span-full text-center">No Players signed up yet.</p>
               ) : (
                 sortedCamperNames.map(p => (
                   <div key={p.id} className="bg-[#fdfbf7] border border-[#dce6e1] rounded-xl px-3 py-2 text-xs flex items-center gap-1.5">
@@ -1428,7 +1428,7 @@ export default function KillCamDashboard() {
               {!signUpSuccessCredentials ? (
                 <form onSubmit={handleSignUpSubmit} className="space-y-4">
                   <div>
-                    <label className="block text-4xs font-black text-slate-400 uppercase tracking-widest mb-1">Your Full Name</label>
+                    <label className="block text-4xs font-black text-slate-400 uppercase tracking-widest mb-1">Your Name</label>
                     <input
                       type="text"
                       placeholder="e.g. Robin"
@@ -1452,7 +1452,7 @@ export default function KillCamDashboard() {
                   <div>
                     <h5 className="font-extrabold text-[#1b4332] text-xs uppercase">Player Joined!</h5>
                     <p className="text-[10px] text-slate-500 mt-1">
-                      Welcome, {signUpSuccessCredentials.name}. Below is your unique secret PIN. Write this down; you will need it to declare yourself dead.
+                      Welcome, {signUpSuccessCredentials.name}. Below is your unique secret PIN. Write this down; you will need it.
                     </p>
                   </div>
                   <div className="bg-[#e9f5ed] border border-[#b2d8c3] rounded-xl py-3 text-lg font-black text-[#1b4332] tracking-widest">
