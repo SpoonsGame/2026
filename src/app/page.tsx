@@ -1434,7 +1434,7 @@ export default function KillCamDashboard() {
                       placeholder="e.g. Robin"
                       value={signUpName}
                       onChange={(e) => setSignUpName(e.target.value)}
-                      className="w-full bg-[#fdfbf7] border border-[#dce6e1] rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-[#1b4332] text-slate-800"
+                      className="w-full bg-[#fdfbf7] border border-[#dce6e1] rounded-xl px-3 py-2.5 text-base md:text-xs focus:outline-none focus:ring-1 focus:ring-[#1b4332] text-slate-800"
                       required
                     />
                   </div>
@@ -1500,7 +1500,7 @@ export default function KillCamDashboard() {
                   <select
                     value={signInName}
                     onChange={(e) => setSignInName(e.target.value)}
-                    className="w-full bg-[#fdfbf7] border border-[#dce6e1] rounded-xl px-3 py-2 text-xs focus:outline-none text-slate-750"
+                    className="w-full bg-[#fdfbf7] border border-[#dce6e1] rounded-xl px-3 py-2 text-base md:text-xs focus:outline-none text-slate-750"
                     required
                   >
                     <option value="">-- Who are you? --</option>
@@ -1518,7 +1518,7 @@ export default function KillCamDashboard() {
                     placeholder="••••"
                     value={signInPin}
                     onChange={(e) => setSignInPin(e.target.value.replace(/\D/g, ""))}
-                    className="w-full bg-[#fdfbf7] border border-[#dce6e1] rounded-xl px-3 py-2 text-xs focus:outline-none text-center font-bold tracking-widest text-slate-800"
+                    className="w-full bg-[#fdfbf7] border border-[#dce6e1] rounded-xl px-3 py-2 text-base md:text-xs focus:outline-none text-center font-bold tracking-widest text-slate-800"
                     required
                   />
                 </div>

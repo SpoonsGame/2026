@@ -537,7 +537,7 @@ export default function KillCamSettings() {
                 placeholder="Password"
                 value={adminPinInput}
                 onChange={(e) => setAdminPinInput(e.target.value)}
-                className="w-full text-center bg-[#fdfbf7] border border-[#dce6e1] rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-[#1b4332] text-slate-800 font-bold"
+                className="w-full text-center bg-[#fdfbf7] border border-[#dce6e1] rounded-xl px-4 py-2.5 text-base md:text-xs focus:outline-none focus:ring-1 focus:ring-[#1b4332] text-slate-800 font-bold"
                 required
               />
               <button
@@ -588,7 +588,7 @@ export default function KillCamSettings() {
                       placeholder="Camper Name..."
                       value={newCamperName}
                       onChange={(e) => setNewCamperName(e.target.value)}
-                      className="bg-[#fdfbf7] border border-[#dce6e1] rounded-xl px-4 py-2 text-xs focus:outline-none text-slate-800 flex-1"
+                      className="bg-[#fdfbf7] border border-[#dce6e1] rounded-xl px-4 py-2 text-base md:text-xs focus:outline-none text-slate-800 flex-1"
                       required
                     />
                     <button
@@ -637,7 +637,7 @@ export default function KillCamSettings() {
                       placeholder="Search campers by name..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full bg-[#fdfbf7] border border-[#dce6e1] rounded-xl pl-9 pr-8 py-2 text-xs focus:outline-none text-slate-800"
+                      className="w-full bg-[#fdfbf7] border border-[#dce6e1] rounded-xl pl-9 pr-8 py-2 text-base md:text-xs focus:outline-none text-slate-800"
                     />
                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     {searchQuery && (
@@ -675,7 +675,7 @@ export default function KillCamSettings() {
                                     type="text"
                                     value={editName}
                                     onChange={(e) => setEditName(e.target.value)}
-                                    className="w-full bg-white border border-[#dce6e1] rounded px-2 py-1 text-3xs text-slate-700"
+                                    className="w-full bg-white border border-[#dce6e1] rounded px-2 py-1 text-base md:text-3xs text-slate-700"
                                   />
                                 </div>
                                 <div>
@@ -685,7 +685,7 @@ export default function KillCamSettings() {
                                     maxLength={4}
                                     value={editPin}
                                     onChange={(e) => setEditPin(e.target.value.replace(/\D/g, ""))}
-                                    className="w-full bg-white border border-[#dce6e1] rounded px-2 py-1 text-3xs text-slate-700 text-center font-bold"
+                                    className="w-full bg-white border border-[#dce6e1] rounded px-2 py-1 text-base md:text-3xs text-slate-700 text-center font-bold"
                                   />
                                 </div>
                               </div>
