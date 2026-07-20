@@ -30,6 +30,7 @@ export interface GameState {
   gameStartTime?: number;
   lastKillTime?: number;
   deathTimes?: Record<string, number>;
+  systemMetadataExists?: boolean;
 }
 
 export const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbxGS_5Zr0RZtBrd744l9ohEBdJE-fmJb4dtJnQlgEA1Xr5SG5VT6_kWKkeFkUWtJk34/exec";
@@ -329,7 +330,8 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
     gameStarted: filteredMappedPlayers.some(p => p.targetId !== null),
     gameStartTime,
     lastKillTime,
-    deathTimes: deathTimesMap
+    deathTimes: deathTimesMap,
+    systemMetadataExists: !!systemPlayer
   };
 };
 

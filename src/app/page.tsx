@@ -755,7 +755,8 @@ export default function KillCamDashboard() {
                 gameStarted: remoteState.gameStarted,
                 gameStartTime: remoteState.gameStartTime,
                 lastKillTime: remoteState.lastKillTime,
-                deathTimes: remoteState.deathTimes
+                deathTimes: remoteState.deathTimes,
+                systemMetadataExists: remoteState.systemMetadataExists
               };
               localStorage.setItem("spoons_local_gamestate_v8", JSON.stringify(merged));
               return merged;
@@ -985,6 +986,9 @@ export default function KillCamDashboard() {
       const deathsStr = Object.entries(updatedDeathTimes)
         .map(([pid, ts]) => `${pid}:${ts}`)
         .join(",");
+      if (!gameState.systemMetadataExists) {
+        await addPlayerToSheet("System", "Metadata", "0000");
+      }
       assignTargetInSheet("System", "Metadata", `START_${startTime}_LAST_${killTime}_DEATHS_${deathsStr}`);
     } catch (error) {
       console.error("Failed to sync self-reported elimination to Google Sheets:", error);

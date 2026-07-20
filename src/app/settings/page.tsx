@@ -82,7 +82,8 @@ export default function KillCamSettings() {
                 gameStarted: remoteState.gameStarted,
                 gameStartTime: remoteState.gameStartTime,
                 lastKillTime: remoteState.lastKillTime,
-                deathTimes: remoteState.deathTimes
+                deathTimes: remoteState.deathTimes,
+                systemMetadataExists: remoteState.systemMetadataExists
               };
               localStorage.setItem("spoons_local_gamestate_v8", JSON.stringify(merged));
               return merged;
@@ -348,6 +349,10 @@ export default function KillCamSettings() {
 
     // Sync all target assignments to Google Sheets
     try {
+      // Recreate System Metadata player if missing in Google Sheets
+      if (!gameState.systemMetadataExists) {
+        await addPlayerToSheet("System", "Metadata", "0000");
+      }
       // Sync game start time to Sheets via System Metadata player
       await assignTargetInSheet("System", "Metadata", `START_${startTime}_LAST_0`);
 
@@ -752,7 +757,7 @@ export default function KillCamSettings() {
                                   </button>
                                 ) : (
                                   <button
-                                    onClick={() => {
+                                    onClick={async () => {
                                       if (window.confirm(`Force eliminate ${p.name}?`)) {
                                         const killTime = Date.now();
                                         const updatedDeathTimes = {
@@ -779,6 +784,9 @@ export default function KillCamSettings() {
                                           const deathsStr = Object.entries(updatedDeathTimes)
                                             .map(([pid, ts]) => `${pid}:${ts}`)
                                             .join(",");
+                                          if (!gameState.systemMetadataExists) {
+                                            await addPlayerToSheet("System", "Metadata", "0000");
+                                          }
                                           assignTargetInSheet("System", "Metadata", `START_${startTime}_LAST_${killTime}_DEATHS_${deathsStr}`);
                                         } catch (error) {
                                           console.error("Failed to sync GM force elimination to Google Sheets:", error);
