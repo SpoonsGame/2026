@@ -764,7 +764,16 @@ export default function KillCamSettings() {
                                           ...(gameState.deathTimes || {}),
                                           [p.id]: killTime
                                         };
-                                        const updatedPlayers = gameState.players.map(x => x.id === p.id ? { ...x, isDead: true, eliminatedBy: "GM Override", killDate: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }), deathReason: "Eliminated by Game Master" } : x);
+                                        const hunter = gameState.players.find(x => x.targetId === p.id && !x.isDead);
+                                        const updatedPlayers = gameState.players.map(x => {
+                                          if (x.id === p.id) {
+                                            return { ...x, isDead: true, eliminatedBy: "GM Override", killDate: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }), deathReason: "Eliminated by Game Master" };
+                                          }
+                                          if (hunter && x.id === hunter.id) {
+                                            return { ...x, targetId: p.targetId === hunter.id ? null : p.targetId };
+                                          }
+                                          return x;
+                                        });
                                         commitState({
                                           ...gameState,
                                           players: updatedPlayers,
