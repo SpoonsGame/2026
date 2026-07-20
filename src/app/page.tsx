@@ -851,7 +851,7 @@ export default function KillCamDashboard() {
     try {
       const parts = name.split(" ");
       const firstName = parts[0];
-      const lastName = parts.slice(1).join(" ") || "";
+      const lastName = parts.slice(1).join(" ") || " ";
       addPlayerToSheet(firstName, lastName, pin);
     } catch (error) {
       console.error("Failed to sync new player to Google Sheets:", error);
@@ -958,7 +958,7 @@ export default function KillCamDashboard() {
 
       const hunterParts = hunter.name.split(" ");
       const hunterFirst = hunterParts[0];
-      const hunterLast = hunterParts.slice(1).join(" ") || "";
+      const hunterLast = hunterParts.slice(1).join(" ") || " ";
       assignTargetInSheet(hunterFirst, hunterLast, targetName);
 
       // Update metadata with new kill time
