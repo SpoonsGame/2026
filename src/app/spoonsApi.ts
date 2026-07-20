@@ -195,7 +195,14 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
   }
 
   if (sheetPlayers.length === 0) {
-    return null;
+    return {
+      players: [],
+      killLog: [],
+      signUpEnabled: true,
+      gameStarted: false,
+      gameStartTime: undefined,
+      lastKillTime: undefined
+    };
   }
 
   // Map sheet rows to Player interface defensively

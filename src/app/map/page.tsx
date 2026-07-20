@@ -222,7 +222,7 @@ export default function LiveMapPage() {
     setIsSyncing(true);
     try {
       const remote = await fetchStateFromRemote();
-      if (remote && remote.players.length > 0) {
+      if (remote) {
         setGameState(prev => {
           const merged = {
             ...prev,

@@ -68,7 +68,7 @@ export default function KillCamSettings() {
       const syncWithSheets = async () => {
         try {
           const remoteState = await fetchStateFromRemote();
-          if (remoteState && remoteState.players.length > 0) {
+          if (remoteState) {
             setGameState(prev => {
               const merged = {
                 ...prev,
@@ -132,7 +132,7 @@ export default function KillCamSettings() {
   // Authenticate Admin
   const handleAdminAuth = (e: React.FormEvent) => {
     e.preventDefault();
-    if (adminPinInput === "CAMP2026") {
+    if (adminPinInput === "swedishpaddle4life") {
       setIsAdminUnlocked(true);
       setAdminPinInput("");
       showToast("🔑 Settings Dashboard unlocked!");
@@ -534,7 +534,7 @@ export default function KillCamSettings() {
             <form onSubmit={handleAdminAuth} className="space-y-3">
               <input
                 type="password"
-                placeholder="Passcode (Default: CAMP2026)"
+                placeholder="Password"
                 value={adminPinInput}
                 onChange={(e) => setAdminPinInput(e.target.value)}
                 className="w-full text-center bg-[#fdfbf7] border border-[#dce6e1] rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-[#1b4332] text-slate-800 font-bold"

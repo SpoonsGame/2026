@@ -733,7 +733,7 @@ export default function KillCamDashboard() {
       const syncWithSheets = async () => {
         try {
           const remoteState = await fetchStateFromRemote();
-          if (remoteState && remoteState.players.length > 0) {
+          if (remoteState) {
             setGameState(prev => {
               const merged = {
                 ...prev,
@@ -1329,10 +1329,7 @@ export default function KillCamDashboard() {
 
           <div className="space-y-4">
             <CampfireGraphic />
-            <h2 className="text-3xl font-black tracking-tight text-[#1b4332] uppercase">Join the Spoons Circle!</h2>
-            <p className="text-xs text-slate-500 font-medium leading-relaxed max-w-sm mx-auto">
-              Ready to hunt? Enter your name to register for the Spoons tournament. Write down your secret PIN to access your secret target later.
-            </p>
+            <h2 className="text-3xl font-black tracking-tight text-[#1b4332] uppercase">Join Spoons!</h2>
           </div>
 
           {gameState.signUpEnabled ? (
@@ -1354,7 +1351,7 @@ export default function KillCamDashboard() {
           {/* REGISTERED LIST */}
           <div className="bg-white border border-[#dce6e1] rounded-3xl p-6 shadow-sm space-y-3 text-left">
             <h4 className="text-xs font-black text-[#1b4332] uppercase tracking-widest border-b border-[#dce6e1]/40 pb-2 flex justify-between">
-              <span>Camper Roster ({gameState.players.length})</span>
+              <span>Players ({gameState.players.length})</span>
               <span className="text-slate-400 lowercase font-medium">awaiting start</span>
             </h4>
 
@@ -1453,7 +1450,7 @@ export default function KillCamDashboard() {
                 <div className="text-center space-y-3 py-2">
                   <CheckCircle className="text-[#52b788] mx-auto" size={40} />
                   <div>
-                    <h5 className="font-extrabold text-[#1b4332] text-xs uppercase">Roster Joined!</h5>
+                    <h5 className="font-extrabold text-[#1b4332] text-xs uppercase">Player Joined!</h5>
                     <p className="text-[10px] text-slate-500 mt-1">
                       Welcome, {signUpSuccessCredentials.name}. Below is your unique secret PIN. Write this down; you will need it to declare yourself dead.
                     </p>
