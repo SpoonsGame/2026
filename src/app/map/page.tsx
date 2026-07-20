@@ -68,11 +68,20 @@ const buildLineageTrees = (players: Player[], killLog: KillLogEntry[]): TreeNode
     };
   });
 
+  // Helper to find a node key in nodesMap matching name case-insensitively and trimmed
+  const findNodeKey = (name: string): string | undefined => {
+    const clean = name.trim().toLowerCase();
+    return Object.keys(nodesMap).find(k => k.trim().toLowerCase() === clean);
+  };
+
   // Link children to their killers
   players.forEach(p => {
     const node = nodesMap[p.name];
-    if (p.isDead && p.eliminatedBy && nodesMap[p.eliminatedBy]) {
-      nodesMap[p.eliminatedBy].children.push(node);
+    if (p.isDead && p.eliminatedBy) {
+      const killerKey = findNodeKey(p.eliminatedBy);
+      if (killerKey && nodesMap[killerKey]) {
+        nodesMap[killerKey].children.push(node);
+      }
     }
   });
 
@@ -93,7 +102,8 @@ const buildLineageTrees = (players: Player[], killLog: KillLogEntry[]): TreeNode
   players.forEach(p => {
     const node = nodesMap[p.name];
     if (node.children.length > 0) {
-      const hasParent = p.isDead && p.eliminatedBy && nodesMap[p.eliminatedBy];
+      const parentKey = p.isDead && p.eliminatedBy ? findNodeKey(p.eliminatedBy) : undefined;
+      const hasParent = parentKey && nodesMap[parentKey];
       if (!hasParent) {
         roots.push(node);
       }
@@ -104,7 +114,8 @@ const buildLineageTrees = (players: Player[], killLog: KillLogEntry[]): TreeNode
 };
 
 const getVictimOrdinal = (victimName: string, killerName: string, players: Player[], killLog: KillLogEntry[]): string | undefined => {
-  const victims = players.filter(p => p.isDead && p.eliminatedBy === killerName);
+  const cleanKiller = killerName.trim().toLowerCase();
+  const victims = players.filter(p => p.isDead && p.eliminatedBy && p.eliminatedBy.trim().toLowerCase() === cleanKiller);
   victims.sort((a, b) => {
     const idxA = killLog.findIndex(l => l.victimName === a.name);
     const idxB = killLog.findIndex(l => l.victimName === b.name);

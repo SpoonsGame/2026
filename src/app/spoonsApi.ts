@@ -224,7 +224,7 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
       pin,
       killDate: sp.killDate || sp.date || undefined,
       deathReason: sp.deathReason || sp.reason || undefined,
-      eliminatedBy: sp.eliminatedBy || undefined
+      eliminatedBy: sp.eliminatedBy ? String(sp.eliminatedBy).trim() : undefined
     };
   });
 
