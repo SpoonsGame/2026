@@ -756,7 +756,8 @@ export default function KillCamDashboard() {
                 gameStartTime: remoteState.gameStartTime,
                 lastKillTime: remoteState.lastKillTime,
                 deathTimes: remoteState.deathTimes,
-                systemMetadataExists: remoteState.systemMetadataExists
+                systemMetadataExists: remoteState.systemMetadataExists,
+                deletedPlayerIds: remoteState.deletedPlayerIds
               };
               localStorage.setItem("spoons_local_gamestate_v8", JSON.stringify(merged));
               return merged;
@@ -1236,24 +1237,68 @@ export default function KillCamDashboard() {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="pt-4 border-t border-[#dce6e1]/40 mt-4 space-y-4 text-xs text-slate-600 leading-relaxed">
-              <div className="flex gap-2">
-                <span>🥄</span>
-                <div>
-                  <h4 className="font-bold text-[#1b4332] text-xs">Wear Your Spoon</h4>
-                  <p className="text-slate-500 text-3xs mt-0.5">
-                    Your named spoon must be worn on your person (collar, pocket, belt, sock) at all times so it is clearly visible.
-                  </p>
-                </div>
+            <div className="pt-4 border-t border-[#dce6e1]/40 mt-4 space-y-5 text-xs text-slate-600 leading-relaxed max-h-[400px] overflow-y-auto pr-1">
+              <div>
+                <h4 className="font-extrabold text-[#1b4332] text-xs uppercase tracking-wider mb-2">📜 Core Rules</h4>
+                <ol className="space-y-3.5 list-decimal pl-4 text-slate-600">
+                  <li>
+                    Each round begins with every participant being given a spoon that reveals the identity of their target. The spoon will be distributed from the spoon office (aka room 4). The game will begin Wednesday the 22 at 22h, but you <strong>MUST</strong> pick up your spoon tonight any time after 21:30 or tomorrow from the spoon office (Room 4). This prevents the initial meetings from becoming a total bloodbath.
+                  </li>
+                  <li>
+                    The entry to play is 2 francs/euro/dollars (you will only receive your spoon once payment is complete).
+                  </li>
+                  <li>
+                    If someone successfully assassinates their target, they are now responsible for eliminating their target’s target.
+                  </li>
+                  <li>
+                    If you cause trouble there will be no support from arranging staff. The game is to be discreet. Your job always comes first.
+                  </li>
+                  <li>
+                    The only defense someone has against their assassin are safe zones, these are as follows: cafeteria, any room with an administrative staff (Danny, Julia, Betty…etc.), infirmary, in front of head counselor’s office.
+                  </li>
+                  <li>
+                    You must attach the spoon to an arm or leg via <strong>ONE HAIR BAND</strong> or <strong>ONE RUBBERBAND</strong>. These are not to be twisted over or double wrapped. Your spoon must be snatchable and visible.
+                  </li>
+                  <li>
+                    Once you have assassinated your target you will have to post in the SPOONS chat with a picture/video of your target dead. Extra points if it's funny.
+                  </li>
+                  <li>
+                    If the game runs correctly, then the final people remaining will be given a target out of the other few remaining, And that begins the final round. When someone assassinates their target they are given their target's target and then they can try to assassinate them as well.
+                  </li>
+                  <li>
+                    The last person(s) to assassinate the other remaining player(s) and be the last to survive has the title of <strong>MASTER ASSASSIN</strong> bestowed upon them and will get to keep the pot.
+                  </li>
+                  <li>
+                    If the spoon breaks during an attempted murder it <strong>DOES NOT COUNT</strong> and there will be a temporary truce until a new spoon is given out. That means you have to report it right away.
+                  </li>
+                </ol>
               </div>
-              <div className="flex gap-2">
-                <span>🎯</span>
-                <div>
-                  <h4 className="font-bold text-[#1b4332] text-xs">Hunt in Secret</h4>
-                  <p className="text-slate-500 text-3xs mt-0.5">
-                    Log in to check your target. Keep it secret. To eliminate them, you must sneakily swipe the spoon off their person and yell &quot;SPOONED!&quot;.
-                  </p>
-                </div>
+
+              <div className="pt-4 border-t border-[#dce6e1]/30">
+                <h4 className="font-extrabold text-[#1b4332] text-xs uppercase tracking-wider mb-2">⚠️ Conduct & Other Rules</h4>
+                <ol className="space-y-3 list-decimal pl-4 text-slate-600">
+                  <li>
+                    <strong>HONESTY.</strong> This game runs smoothly and in a fun manner only if all participants play honestly and fairly. Admit you've been killed if you have, etc.
+                  </li>
+                  <li>
+                    Be aware of your surroundings when attempting a kill and <strong>NEVER</strong> get kids involved. Your job always comes first.
+                  </li>
+                  <li>
+                    The community will be the judge if there’s any disputes. It takes a lot to prepare for this game and time to do it right. Please be kind and don’t suggest rule changes until the game is done.
+                  </li>
+                  <li>
+                    If two (or more) people are arguing (eg. &quot;I killed you!&quot; &quot;Did not, you broke my spoon!&quot;), and it's a matter of he said/she said, and it can't immediately be solved between the two of them, they are both removed from the game. If you cause injury, you are eliminated.
+                  </li>
+                  <li>
+                    No running around or being otherwise disruptive, because this is easily the type of game that the camp administration might want to shut down if they have reason to believe it might be disruptive. We should have fun playing Spoons, but let's not ruin it for everyone by getting it banned.
+                  </li>
+                  <li>
+                    Whenever anything of any importance happens regarding the game, privately message staff.
+                  </li>
+                  <li>
+                    Return the Spoons to the spoon office when done!
+                  </li>
+                </ol>
               </div>
             </div>
           </motion.div>
@@ -1553,7 +1598,7 @@ export default function KillCamDashboard() {
                   type="submit"
                   className="w-full bg-[#1b4332] hover:bg-[#2d6a4f] text-white font-bold py-2.5 rounded-xl text-xs uppercase"
                 >
-                  Access Dossier
+                  Access
                 </button>
               </form>
             </motion.div>

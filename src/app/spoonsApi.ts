@@ -31,6 +31,7 @@ export interface GameState {
   lastKillTime?: number;
   deathTimes?: Record<string, number>;
   systemMetadataExists?: boolean;
+  deletedPlayerIds?: string[];
 }
 
 export const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbxGS_5Zr0RZtBrd744l9ohEBdJE-fmJb4dtJnQlgEA1Xr5SG5VT6_kWKkeFkUWtJk34/exec";
@@ -270,30 +271,36 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
   let gameStartTime: number | undefined = undefined;
   let lastKillTime: number | undefined = undefined;
   const deathTimesMap: Record<string, number> = {};
+  const deletedPlayerIds: string[] = [];
 
   if (systemPlayer) {
     const targetPin = (systemPlayer as any).targetPin || "";
     if (targetPin.startsWith("START_")) {
       const parts = targetPin.split("_");
-      if (parts[1]) gameStartTime = parseInt(parts[1], 10);
-      if (parts[3]) lastKillTime = parseInt(parts[3], 10);
-
-      const deathsIndex = targetPin.indexOf("_DEATHS_");
-      if (deathsIndex !== -1) {
-        const deathsStr = targetPin.substring(deathsIndex + 8);
-        const pairs = deathsStr.split(",");
-        pairs.forEach((pair: string) => {
-          const [pid, tsStr] = pair.split(":");
-          if (pid && tsStr) {
-            deathTimesMap[pid] = parseInt(tsStr, 10);
-          }
-        });
+      for (let i = 0; i < parts.length; i++) {
+        if (parts[i] === "START") gameStartTime = parseInt(parts[i + 1], 10);
+        if (parts[i] === "LAST") lastKillTime = parseInt(parts[i + 1], 10);
+        if (parts[i] === "DEATHS" && parts[i + 1]) {
+          parts[i + 1].split(",").forEach((pair: string) => {
+            const [pid, tsStr] = pair.split(":");
+            if (pid && tsStr) {
+              deathTimesMap[pid] = parseInt(tsStr, 10);
+            }
+          });
+        }
+        if (parts[i] === "DELETED" && parts[i + 1]) {
+          parts[i + 1].split(",").forEach((id: string) => {
+            if (id) deletedPlayerIds.push(id);
+          });
+        }
       }
     }
   }
 
-  // Remove System Metadata player from final players list
-  const filteredMappedPlayers = mappedPlayers.filter(p => p.name !== "System Metadata");
+  const deletedSet = new Set(deletedPlayerIds);
+
+  // Remove System Metadata player and soft-deleted players from final list
+  const filteredMappedPlayers = mappedPlayers.filter(p => p.name !== "System Metadata" && !deletedSet.has(p.id));
 
   // Assign killDate for each dead player using deathTimesMap
   filteredMappedPlayers.forEach(p => {
@@ -331,7 +338,8 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
     gameStartTime,
     lastKillTime,
     deathTimes: deathTimesMap,
-    systemMetadataExists: !!systemPlayer
+    systemMetadataExists: !!systemPlayer,
+    deletedPlayerIds
   };
 };
 

@@ -83,7 +83,8 @@ export default function KillCamSettings() {
                 gameStartTime: remoteState.gameStartTime,
                 lastKillTime: remoteState.lastKillTime,
                 deathTimes: remoteState.deathTimes,
-                systemMetadataExists: remoteState.systemMetadataExists
+                systemMetadataExists: remoteState.systemMetadataExists,
+                deletedPlayerIds: remoteState.deletedPlayerIds
               };
               localStorage.setItem("spoons_local_gamestate_v8", JSON.stringify(merged));
               return merged;
@@ -279,18 +280,24 @@ export default function KillCamSettings() {
     }
 
     const updatedKillLog = gameState.killLog.filter(k => k.victimName !== targetPlayer.name);
+    const updatedDeletedIds = [
+      ...(gameState.deletedPlayerIds || []),
+      id
+    ];
 
     const updatedState = {
       ...gameState,
       players: updatedPlayers,
-      killLog: updatedKillLog
+      killLog: updatedKillLog,
+      deletedPlayerIds: updatedDeletedIds
     };
 
     await commitState(updatedState);
     showToast(`🌲 Removed ${targetPlayer.name} and healed loop.`);
 
-    // Sync target assignment update in Google Sheets
+    // Sync target assignment update and delete list to Google Sheets
     try {
+      // 1. Heal target in Sheets if game started
       if (hunter && targetPlayer.targetId) {
         const targetId = targetPlayer.targetId === id ? null : targetPlayer.targetId;
         const target = gameState.players.find(p => p.id === targetId);
@@ -299,10 +306,27 @@ export default function KillCamSettings() {
         const hunterParts = hunter.name.split(" ");
         const hunterFirst = hunterParts[0];
         const hunterLast = hunterParts.slice(1).join(" ") || " ";
-        assignTargetInSheet(hunterFirst, hunterLast, targetName);
+        await assignTargetInSheet(hunterFirst, hunterLast, targetName);
       }
+
+      // 2. Sync updated delete list via System Metadata
+      const startTime = gameState.gameStartTime || 0;
+      const killTime = gameState.lastKillTime || 0;
+      const deathsStr = Object.entries(gameState.deathTimes || {})
+        .map(([pid, ts]) => `${pid}:${ts}`)
+        .join(",");
+      const deletedStr = updatedDeletedIds.join(",");
+
+      let metadataVal = `START_${startTime}_LAST_${killTime}`;
+      if (deathsStr) metadataVal += `_DEATHS_${deathsStr}`;
+      if (deletedStr) metadataVal += `_DELETED_${deletedStr}`;
+
+      if (!gameState.systemMetadataExists) {
+        await addPlayerToSheet("System", "Metadata", "0000");
+      }
+      await assignTargetInSheet("System", "Metadata", metadataVal);
     } catch (error) {
-      console.error("Failed to sync target healing on remove to Sheets:", error);
+      console.error("Failed to sync player deletion to Google Sheets:", error);
     }
   };
 
@@ -386,7 +410,9 @@ export default function KillCamSettings() {
       players: resetPlayers,
       killLog: [],
       signUpEnabled: true,
-      gameStarted: false
+      gameStarted: false,
+      deletedPlayerIds: [],
+      deathTimes: {}
     };
 
     await commitState(updated);
@@ -394,6 +420,11 @@ export default function KillCamSettings() {
 
     // Sync target clearing to Google Sheets (set to "None")
     try {
+      if (!gameState.systemMetadataExists) {
+        await addPlayerToSheet("System", "Metadata", "0000");
+      }
+      await assignTargetInSheet("System", "Metadata", "None");
+
       resetPlayers.forEach(p => {
         const parts = p.name.split(" ");
         const firstName = parts[0];
