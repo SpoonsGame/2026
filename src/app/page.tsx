@@ -748,9 +748,18 @@ export default function KillCamDashboard() {
           const remoteState = await fetchStateFromRemote();
           if (remoteState) {
             setGameState(prev => {
+              const sanitizedPlayers = remoteState.players.map(p => {
+                const isSession = camperSession && p.id === camperSession.id;
+                return {
+                  ...p,
+                  pin: isSession ? p.pin : "",
+                  targetId: isSession ? p.targetId : null
+                };
+              });
+
               const merged = {
                 ...prev,
-                players: remoteState.players,
+                players: sanitizedPlayers,
                 killLog: remoteState.killLog,
                 gameStarted: remoteState.gameStarted,
                 gameStartTime: remoteState.gameStartTime,
@@ -812,7 +821,15 @@ export default function KillCamDashboard() {
 
   const commitState = async (updated: GameState) => {
     setGameState(updated);
-    localStorage.setItem("spoons_local_gamestate_v8", JSON.stringify(updated));
+    const sanitizedPlayers = updated.players.map(p => {
+      const isSession = camperSession && p.id === camperSession.id;
+      return {
+        ...p,
+        pin: isSession ? p.pin : "",
+        targetId: isSession ? p.targetId : null
+      };
+    });
+    localStorage.setItem("spoons_local_gamestate_v8", JSON.stringify({ ...updated, players: sanitizedPlayers }));
   };
 
   const alivePlayers = useMemo(() => gameState.players.filter(p => !p.isDead), [gameState.players]);
@@ -875,21 +892,61 @@ export default function KillCamDashboard() {
   };
 
   // Camper Dossier Sign In
-  const handleCamperSignIn = (e: React.FormEvent) => {
+  const handleCamperSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!signInName) return;
+    setIsLoading(true);
 
-    const p = gameState.players.find(x => x.name === signInName);
-    if (!p) return;
+    try {
+      const remoteState = await fetchStateFromRemote();
+      if (!remoteState) {
+        showToast("⚠️ Could not reach database. Try again.");
+        setIsLoading(false);
+        return;
+      }
 
-    if (p.pin === signInPin.trim()) {
-      setCamperSession(p);
-      sessionStorage.setItem("spoons_camper_session", JSON.stringify(p));
-      setIsSignInOpen(false);
-      setSignInPin("");
-      showToast(`⛺ Welcome, ${p.name}! Dossier loaded.`);
-    } else {
-      showToast("❌ Incorrect PIN code.");
+      const p = remoteState.players.find(
+        x => x.name.toLowerCase() === signInName.toLowerCase() && x.pin === signInPin.trim()
+      );
+
+      if (p) {
+        setCamperSession(p);
+        sessionStorage.setItem("spoons_camper_session", JSON.stringify(p));
+        setIsSignInOpen(false);
+        setSignInPin("");
+        showToast(`⛺ Welcome, ${p.name}! Dossier loaded.`);
+
+        // Immediately update React state and cache with this player's target/pin enabled
+        const sanitizedPlayers = remoteState.players.map(x => {
+          const isSession = x.id === p.id;
+          return {
+            ...x,
+            pin: isSession ? x.pin : "",
+            targetId: isSession ? x.targetId : null
+          };
+        });
+
+        const merged = {
+          ...gameState,
+          players: sanitizedPlayers,
+          killLog: remoteState.killLog,
+          gameStarted: remoteState.gameStarted,
+          gameStartTime: remoteState.gameStartTime,
+          lastKillTime: remoteState.lastKillTime,
+          deathTimes: remoteState.deathTimes,
+          systemMetadataExists: remoteState.systemMetadataExists,
+          deletedPlayerIds: remoteState.deletedPlayerIds
+        };
+        setGameState(merged);
+        localStorage.setItem("spoons_local_gamestate_v8", JSON.stringify(merged));
+      } else {
+        showToast("❌ Incorrect PIN code.");
+      }
+    } catch (error) {
+      console.error(error);
+      showToast("⚠️ Connection error. Try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 

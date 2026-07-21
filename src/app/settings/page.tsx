@@ -75,9 +75,17 @@ export default function KillCamSettings() {
           const remoteState = await fetchStateFromRemote();
           if (remoteState) {
             setGameState(prev => {
+              const sanitizedPlayers = remoteState.players.map(p => {
+                return {
+                  ...p,
+                  pin: isAdminUnlocked ? p.pin : "",
+                  targetId: isAdminUnlocked ? p.targetId : null
+                };
+              });
+
               const merged = {
                 ...prev,
-                players: remoteState.players,
+                players: sanitizedPlayers,
                 killLog: remoteState.killLog,
                 gameStarted: remoteState.gameStarted,
                 gameStartTime: remoteState.gameStartTime,
@@ -108,11 +116,16 @@ export default function KillCamSettings() {
 
       return () => window.removeEventListener("storage", handleStorage);
     }
-  }, []);
+  }, [isAdminUnlocked]);
 
   const commitState = async (updated: GameState) => {
     setGameState(updated);
-    localStorage.setItem("spoons_local_gamestate_v8", JSON.stringify(updated));
+    const sanitizedPlayers = updated.players.map(p => ({
+      ...p,
+      pin: isAdminUnlocked ? p.pin : "",
+      targetId: isAdminUnlocked ? p.targetId : null
+    }));
+    localStorage.setItem("spoons_local_gamestate_v8", JSON.stringify({ ...updated, players: sanitizedPlayers }));
   };
 
   // Derived metrics
@@ -138,13 +151,30 @@ export default function KillCamSettings() {
   }, [gameState.players]);
 
   // Authenticate Admin
-  const handleAdminAuth = (e: React.FormEvent) => {
+  const handleAdminAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (adminPinInput === "swedishpaddle4life") {
-      setIsAdminUnlocked(true);
-      sessionStorage.setItem("spoons_admin_unlocked", "true");
-      setAdminPinInput("");
-      showToast("🔑 Settings Dashboard unlocked!");
+      setIsLoading(true);
+      try {
+        const remoteState = await fetchStateFromRemote();
+        if (remoteState) {
+          setIsAdminUnlocked(true);
+          sessionStorage.setItem("spoons_admin_unlocked", "true");
+          setAdminPinInput("");
+          showToast("🔑 Settings Dashboard unlocked!");
+
+          // Set full players state with targets and PINs in memory and local storage
+          setGameState(remoteState);
+          localStorage.setItem("spoons_local_gamestate_v8", JSON.stringify(remoteState));
+        } else {
+          showToast("⚠️ Could not reach database. Try again.");
+        }
+      } catch (err) {
+        console.error(err);
+        showToast("⚠️ Connection error. Try again.");
+      } finally {
+        setIsLoading(false);
+      }
     } else {
       showToast("❌ Incorrect passcode.");
     }
@@ -940,6 +970,19 @@ export default function KillCamSettings() {
                   onClick={() => {
                     setIsAdminUnlocked(false);
                     sessionStorage.removeItem("spoons_admin_unlocked");
+                    setGameState(prev => {
+                      const scrubbed = {
+                        ...prev,
+                        players: prev.players.map(p => ({
+                          ...p,
+                          pin: "",
+                          targetId: null
+                        }))
+                      };
+                      localStorage.setItem("spoons_local_gamestate_v8", JSON.stringify(scrubbed));
+                      return scrubbed;
+                    });
+                    showToast("🔒 Dashboard locked.");
                   }}
                   className="block mx-auto mt-2 text-[#2d6a4f] hover:text-[#1b4332]"
                 >
