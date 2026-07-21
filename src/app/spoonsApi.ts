@@ -216,7 +216,7 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
     const pin = String(sp.pin || sp.pinCode || sp.pincode || "");
 
     return {
-      id: sp.id || pin || name,
+      id: name.toLowerCase().replace(/[^a-z0-9]/g, "_"),
       name,
       email: sp.email || "",
       phone: sp.phone || "",
