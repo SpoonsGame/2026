@@ -702,6 +702,15 @@ export default function KillCamDashboard() {
   const [isSignInOpen, setIsSignInOpen] = useState(false);
   const [signInName, setSignInName] = useState("");
   const [signInPin, setSignInPin] = useState("");
+  const [signInSearch, setSignInSearch] = useState("");
+  const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
+
+  const searchResults = useMemo(() => {
+    if (!signInSearch.trim()) return gameState.players;
+    return gameState.players.filter(p =>
+      p.name.toLowerCase().includes(signInSearch.toLowerCase())
+    );
+  }, [gameState.players, signInSearch]);
 
   // Camper Self-Report Death Modal States
   const [isReportDeathOpen, setIsReportDeathOpen] = useState(false);
@@ -1189,6 +1198,8 @@ export default function KillCamDashboard() {
             onClick={() => {
               setSignInName("");
               setSignInPin("");
+              setSignInSearch("");
+              setIsSearchDropdownOpen(false);
               setIsSignInOpen(true);
             }}
             className="w-full bg-[#1b4332] hover:bg-[#2d6a4f] text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider transition-all"
@@ -1623,19 +1634,53 @@ export default function KillCamDashboard() {
               </div>
 
               <form onSubmit={handleCamperSignIn} className="space-y-4">
-                <div>
-                  <label className="block text-4xs font-black text-[#2d6a4f] uppercase tracking-widest mb-1">Select Your Name</label>
-                  <select
-                    value={signInName}
-                    onChange={(e) => setSignInName(e.target.value)}
-                    className="w-full bg-[#fdfbf7] border border-[#dce6e1] rounded-xl px-3 py-2 text-base md:text-xs focus:outline-none text-slate-750"
+                <div className="relative">
+                  <label className="block text-4xs font-black text-[#2d6a4f] uppercase tracking-widest mb-1">Search Your Name</label>
+                  <input
+                    type="text"
+                    placeholder="Type name to search..."
+                    value={signInSearch}
+                    onChange={(e) => {
+                      setSignInSearch(e.target.value);
+                      setSignInName(""); // Clear selected name until they click a suggestion
+                      setIsSearchDropdownOpen(true);
+                    }}
+                    onFocus={() => setIsSearchDropdownOpen(true)}
+                    className="w-full bg-[#fdfbf7] border border-[#dce6e1] rounded-xl px-3 py-2 text-base md:text-xs focus:outline-none text-slate-800 font-medium"
                     required
-                  >
-                    <option value="">-- Who are you? --</option>
-                    {gameState.players.map(p => (
-                      <option key={p.id} value={p.name}>{p.name}</option>
-                    ))}
-                  </select>
+                  />
+                  {isSearchDropdownOpen && (
+                    <>
+                      {/* Fullscreen backing layer to intercept clicks and dismiss suggestion panel */}
+                      <div 
+                        className="fixed inset-0 z-10" 
+                        onClick={() => setIsSearchDropdownOpen(false)}
+                      />
+                      <div className="absolute left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white border border-[#dce6e1] rounded-xl shadow-lg z-20 divide-y divide-slate-100">
+                        {searchResults.length > 0 ? (
+                          searchResults.map(p => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => {
+                                setSignInName(p.name);
+                                setSignInSearch(p.name);
+                                setIsSearchDropdownOpen(false);
+                              }}
+                              className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-[#e9f5ed] hover:text-[#1b4332] font-medium transition-colors flex items-center justify-between"
+                            >
+                              <span>{p.name}</span>
+                              {p.isDead && (
+                                <span className="text-[8px] bg-rose-50 border border-rose-200 text-rose-600 px-1.5 py-0.2 rounded-full font-black uppercase tracking-wider scale-90">Dead</span>
+                              )}
+                            </button>
+                          ))
+                        ) : (
+                          <div className="px-3 py-2.5 text-xs text-slate-400 italic">No players found</div>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div>
@@ -1653,7 +1698,8 @@ export default function KillCamDashboard() {
 
                 <button
                   type="submit"
-                  className="w-full bg-[#1b4332] hover:bg-[#2d6a4f] text-white font-bold py-2.5 rounded-xl text-xs uppercase"
+                  disabled={!signInName}
+                  className="w-full bg-[#1b4332] hover:bg-[#2d6a4f] disabled:opacity-50 disabled:hover:bg-[#1b4332] text-white font-bold py-2.5 rounded-xl text-xs uppercase transition-all"
                 >
                   Access
                 </button>
