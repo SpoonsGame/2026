@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Skull, Crown, BookOpen, Settings, RefreshCw, X, AlertTriangle, CheckCircle,
   ChevronDown, ChevronRight, LogOut, ArrowRight, UserPlus, Flame, Target, Maximize2, Minimize2,
-  ZoomIn, ZoomOut
+  ZoomIn, ZoomOut, Award
 } from "lucide-react";
 import { Player, KillLogEntry, GameState, fetchStateFromRemote, addPlayerToSheet, eliminatePlayerInSheet, assignTargetInSheet } from "./spoonsApi";
 import Link from "next/link";
@@ -1248,6 +1248,65 @@ export default function KillCamDashboard() {
     </div>
   );
 
+  const renderLeaderboard = () => {
+    const leaderData = gameState.players
+      .map(p => {
+        const killCount = gameState.killLog.filter(k => k.killerName === p.name).length;
+        return {
+          ...p,
+          killCount
+        };
+      })
+      .filter(p => p.killCount > 0)
+      .sort((a, b) => b.killCount - a.killCount || a.name.localeCompare(b.name));
+
+    if (leaderData.length === 0) return null;
+
+    return (
+      <div className="bg-white border border-[#dce6e1] rounded-3xl p-6 shadow-sm">
+        <h3 className="text-xs font-black text-[#1b4332] uppercase tracking-widest mb-4 flex items-center gap-1.5">
+          <Award className="text-amber-500" size={15} />
+          LEADERBOARD (Top Assassins)
+        </h3>
+
+        <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+          {leaderData.map((p, idx) => {
+            let badge = "";
+            if (idx === 0) badge = "🥇";
+            else if (idx === 1) badge = "🥈";
+            else if (idx === 2) badge = "🥉";
+            else badge = `#${idx + 1}`;
+
+            return (
+              <div
+                key={p.id}
+                className="bg-[#fdfbf7] border border-[#dce6e1] rounded-xl px-3 py-2 text-xs flex items-center justify-between"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-2xs font-bold text-slate-400 w-8">{badge}</span>
+                  <span>{getCampEmoji(p.name)}</span>
+                  <span className={`font-extrabold ${p.isDead ? "text-slate-400 line-through" : "text-slate-800"}`}>
+                    {p.name}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] bg-rose-50 border border-rose-200 text-rose-600 px-2 py-0.5 rounded-full font-black uppercase flex items-center gap-0.5">
+                    🔥 {p.killCount} {p.killCount === 1 ? "Kill" : "Kills"}
+                  </span>
+                  {p.isDead && (
+                    <span className="text-[9px] bg-slate-100 border border-slate-200 text-slate-500 px-1.5 py-0.5 rounded-full font-bold uppercase scale-90">
+                      Dead
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   const renderGraveyard = () => {
     if (deadPlayers.length === 0) return null;
     return (
@@ -1522,6 +1581,7 @@ export default function KillCamDashboard() {
             <div className="hidden lg:grid grid-cols-12 gap-6 items-start">
               <div className="col-span-7 space-y-6">
                 {renderFlowChart()}
+                {renderLeaderboard()}
                 {renderGraveyard()}
                 {renderRules()}
               </div>
@@ -1537,6 +1597,7 @@ export default function KillCamDashboard() {
               {renderStats()}
               {renderDossier()}
               {renderFlowChart()}
+              {renderLeaderboard()}
               {renderFeed()}
               {renderGraveyard()}
               {renderRules()}
