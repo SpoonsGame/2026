@@ -757,9 +757,13 @@ export default function KillCamDashboard() {
         try {
           const remoteState = await fetchStateFromRemote();
           if (remoteState) {
+            // Read fresh session directly from sessionStorage to bypass React stale closure
+            const storedSession = sessionStorage.getItem("spoons_camper_session");
+            const activeSession = storedSession ? JSON.parse(storedSession) : null;
+
             setGameState(prev => {
               const sanitizedPlayers = remoteState.players.map(p => {
-                const isSession = camperSession && p.id === camperSession.id;
+                const isSession = activeSession && p.id === activeSession.id;
                 return {
                   ...p,
                   pin: isSession ? p.pin : "",
