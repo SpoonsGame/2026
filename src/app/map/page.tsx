@@ -237,9 +237,14 @@ export default function LiveMapPage() {
       const remote = await fetchStateFromRemote();
       if (remote) {
         setGameState(prev => {
+          const sanitizedPlayers = remote.players.map(p => ({
+            ...p,
+            pin: "",
+            targetId: null
+          }));
           const merged = {
             ...prev,
-            players: remote.players,
+            players: sanitizedPlayers,
             killLog: remote.killLog,
             gameStarted: remote.gameStarted
           };
