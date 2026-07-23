@@ -1247,7 +1247,7 @@ export default function KillCamDashboard() {
             Quiet reigns in the forest. No spoonings logged.
           </p>
         ) : (
-          [...gameState.killLog].map(log => (
+          [...gameState.killLog].reverse().map(log => (
             <div
               key={log.id}
               className="bg-[#fdfbf7] border-l-2 border-rose-500 rounded-xl p-3 space-y-1 relative overflow-hidden"
