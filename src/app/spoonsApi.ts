@@ -319,12 +319,24 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
     }
   });
 
-  // Sort reconstructed kill log entries by their death timestamp (force workflow redeploy)
+  // Helper to recursively estimate death times for manual spreadsheet overrides
+  const getEstimatedDeathTime = (playerId: string): number => {
+    if (deathTimesMap[playerId]) return deathTimesMap[playerId];
+    const player = filteredMappedPlayers.find(p => p.id === playerId);
+    if (!player || !player.isDead || !player.eliminatedBy) return Number.MAX_SAFE_INTEGER;
+    const killer = filteredMappedPlayers.find(p => p.name === player.eliminatedBy);
+    if (killer && killer.isDead) {
+      return getEstimatedDeathTime(killer.id) - 1;
+    }
+    return Date.now();
+  };
+
+  // Sort reconstructed kill log entries by their death timestamp
   finalKillLog.sort((a, b) => {
     const playerA = filteredMappedPlayers.find(p => p.name === a.victimName);
     const playerB = filteredMappedPlayers.find(p => p.name === b.victimName);
-    const timeA = playerA ? (deathTimesMap[playerA.id] || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER;
-    const timeB = playerB ? (deathTimesMap[playerB.id] || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER;
+    const timeA = playerA ? getEstimatedDeathTime(playerA.id) : Number.MAX_SAFE_INTEGER;
+    const timeB = playerB ? getEstimatedDeathTime(playerB.id) : Number.MAX_SAFE_INTEGER;
     return timeA - timeB;
   });
 
