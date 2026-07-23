@@ -716,6 +716,7 @@ export default function KillCamDashboard() {
   const [isReportDeathOpen, setIsReportDeathOpen] = useState(false);
 
   const [isRulesExpanded, setIsRulesExpanded] = useState(false);
+  const [firstSyncDone, setFirstSyncDone] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -780,6 +781,7 @@ export default function KillCamDashboard() {
               localStorage.setItem("spoons_local_gamestate_v8", JSON.stringify(merged));
               return merged;
             });
+            setFirstSyncDone(true);
           }
         } catch (error) {
           console.error("Failed to sync state from Google Sheets on load:", error);
@@ -844,7 +846,7 @@ export default function KillCamDashboard() {
   const alivePlayers = useMemo(() => gameState.players.filter(p => !p.isDead), [gameState.players]);
   const deadPlayers = useMemo(() => gameState.players.filter(p => p.isDead), [gameState.players]);
 
-  const isGameOver = useMemo(() => gameState.gameStarted && alivePlayers.length === 1 && gameState.players.length >= 2, [gameState.players, alivePlayers, gameState.gameStarted]);
+  const isGameOver = useMemo(() => firstSyncDone && gameState.gameStarted && alivePlayers.length === 1 && gameState.players.length >= 2, [gameState.players, alivePlayers, gameState.gameStarted, firstSyncDone]);
   const winner = useMemo(() => isGameOver ? alivePlayers[0] : null, [isGameOver, alivePlayers]);
 
   const deadTodayCount = useMemo(() => {
