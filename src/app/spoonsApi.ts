@@ -319,7 +319,7 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
     }
   });
 
-  // Sort reconstructed kill log entries by their death timestamp
+  // Sort reconstructed kill log entries by their death timestamp (force workflow redeploy)
   finalKillLog.sort((a, b) => {
     const playerA = filteredMappedPlayers.find(p => p.name === a.victimName);
     const playerB = filteredMappedPlayers.find(p => p.name === b.victimName);
