@@ -394,7 +394,7 @@ const KillLineageForest = ({ players, killLog }: { players: Player[]; killLog: K
     return getLineageNames(hoveredName, players);
   }, [hoveredName, players]);
 
-  const hasHighlight = hoveredName !== null;
+  const hasHighlight = false;
 
   return (
     <div className={isFullScreen

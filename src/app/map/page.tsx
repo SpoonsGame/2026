@@ -418,7 +418,7 @@ export default function LiveMapPage() {
     return getLineageNames(hoveredName, gameState.players);
   }, [hoveredName, gameState.players]);
 
-  const hasHighlight = hoveredName !== null;
+  const hasHighlight = false;
 
   const aliveCount = useMemo(() => gameState.players.filter(p => !p.isDead).length, [gameState.players]);
   const deadCount = useMemo(() => gameState.players.filter(p => p.isDead).length, [gameState.players]);
