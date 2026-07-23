@@ -1822,7 +1822,7 @@ export default function KillCamDashboard() {
                   </button>
                   <button
                     type="submit"
-                    disabled={!gameState.players.some(p => p.targetId === camperSession.id && !p.isDead)}
+                    disabled={isLoading}
                     className="w-1/2 bg-rose-600 hover:bg-rose-700 text-white font-black text-2xs py-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Confirm Spooned
