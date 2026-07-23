@@ -213,10 +213,6 @@ export default function LiveMapPage() {
   const [hoveredName, setHoveredName] = useState<string | null>(null);
 
   const [zoom, setZoom] = useState(1);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Load from local storage immediately on mount
@@ -299,97 +295,8 @@ export default function LiveMapPage() {
     return maxY + 80;
   }, [layoutNodes]);
 
-  // Center canvas on layout change
-  useEffect(() => {
-    if (containerRef.current) {
-      const containerWidth = containerRef.current.clientWidth;
-      const containerHeight = containerRef.current.clientHeight;
-      const x = Math.max(30, (containerWidth - canvasWidth * zoom) / 2);
-      const y = Math.max(30, (containerHeight - canvasHeight * zoom) / 2);
-      setOffset({ x, y });
-    }
-  }, [canvasWidth, canvasHeight]);
-
-  // Prevent default body scrolling on wheel scroll/touch drag
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      if (e.ctrlKey || e.metaKey) {
-        const zoomFactor = 0.002;
-        setZoom(prev => Math.min(2.5, Math.max(0.3, prev - e.deltaY * zoomFactor)));
-      } else {
-        setOffset(prev => ({
-          x: prev.x - e.deltaX,
-          y: prev.y - e.deltaY
-        }));
-      }
-    };
-
-    const handleTouchMovePrevent = (e: TouchEvent) => {
-      if (e.touches.length === 1) {
-        e.preventDefault();
-      }
-    };
-
-    container.addEventListener("wheel", handleWheel, { passive: false });
-    container.addEventListener("touchmove", handleTouchMovePrevent, { passive: false });
-
-    return () => {
-      container.removeEventListener("wheel", handleWheel);
-      container.removeEventListener("touchmove", handleTouchMovePrevent);
-    };
-  }, []);
-
   const handleReset = () => {
     setZoom(1);
-    if (containerRef.current) {
-      const containerWidth = containerRef.current.clientWidth;
-      const containerHeight = containerRef.current.clientHeight;
-      const x = Math.max(30, (containerWidth - canvasWidth) / 2);
-      const y = Math.max(30, (containerHeight - canvasHeight) / 2);
-      setOffset({ x, y });
-    }
-  };
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button !== 0) return;
-    setIsDragging(true);
-    setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    setOffset({
-      x: e.clientX - dragStart.x,
-      y: e.clientY - dragStart.y
-    });
-  };
-
-  const handleMouseUpOrLeave = () => {
-    setIsDragging(false);
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length !== 1) return;
-    const touch = e.touches[0];
-    setIsDragging(true);
-    setDragStart({ x: touch.clientX - offset.x, y: touch.clientY - offset.y });
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging || e.touches.length !== 1) return;
-    const touch = e.touches[0];
-    setOffset({
-      x: touch.clientX - dragStart.x,
-      y: touch.clientY - dragStart.y
-    });
-  };
-
-  const handleTouchEnd = () => {
-    setIsDragging(false);
   };
 
   const connectionPaths = useMemo(() => {
@@ -586,27 +493,18 @@ export default function LiveMapPage() {
         <div className="flex-1 relative flex flex-col min-h-0">
           <div 
             ref={containerRef}
-            className={`flex-1 w-full rounded-3xl border border-[#dce6e1]/60 bg-[#FAF9F5] overflow-hidden select-none relative ${
-              isDragging ? "cursor-grabbing" : "cursor-grab"
-            }`}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUpOrLeave}
-            onMouseLeave={() => {
-              handleMouseUpOrLeave();
-              setHoveredName(null);
-            }}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
+            className="flex-1 w-full rounded-3xl border border-[#dce6e1]/60 bg-[#FAF9F5] overflow-auto relative"
+            style={{ scrollbarWidth: "thin" }}
+            onMouseLeave={() => setHoveredName(null)}
           >
-            {/* Translated wrapper for Google-maps drag panning */}
+            {/* Native Scroll Wrapper */}
             <div 
-              className="absolute origin-top-left transition-transform duration-75 ease-out grid-backdrop"
+              className="relative origin-top-left transition-all duration-200 ease-out grid-backdrop p-8"
               style={{
-                width: `${canvasWidth}px`,
-                height: `${canvasHeight}px`,
-                transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`
+                width: `${canvasWidth * zoom}px`,
+                height: `${canvasHeight * zoom}px`,
+                transform: `scale(${zoom})`,
+                transformOrigin: "top left"
               }}
             >
               {/* Micro floating sparks */}

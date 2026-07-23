@@ -251,22 +251,7 @@ const KillLineageForest = ({ players, killLog }: { players: Player[]; killLog: K
     return maxY + 80;
   }, [layoutNodes]);
 
-  // Drag-to-pan states (Google Maps style)
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const containerRef = React.useRef<HTMLDivElement>(null);
-
-  // Auto center the canvas in the viewport on mount / layout updates / full-screen toggle
-  useEffect(() => {
-    if (containerRef.current) {
-      const containerWidth = containerRef.current.clientWidth;
-      const containerHeight = containerRef.current.clientHeight;
-      const x = Math.max(30, (containerWidth - canvasWidth * zoom) / 2);
-      const y = Math.max(30, (containerHeight - canvasHeight * zoom) / 2);
-      setOffset({ x, y });
-    }
-  }, [canvasWidth, canvasHeight, isFullScreen]);
 
   // Lock body scroll when full-screen is active to prevent scrolling page behind the map
   useEffect(() => {
@@ -280,90 +265,8 @@ const KillLineageForest = ({ players, killLog }: { players: Player[]; killLog: K
     };
   }, [isFullScreen]);
 
-  // Handle active wheel listener to prevent default page scrolling and support zooming/panning
-  // Handle active touch listener to prevent default page scrolling when dragging the map on mobile
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      if (e.ctrlKey || e.metaKey) {
-        // Zooming: zoom factor maps to deltaY
-        const zoomFactor = 0.002;
-        setZoom(prev => Math.min(2.5, Math.max(0.3, prev - e.deltaY * zoomFactor)));
-      } else {
-        // Panning: translate the map
-        setOffset(prev => ({
-          x: prev.x - e.deltaX,
-          y: prev.y - e.deltaY
-        }));
-      }
-    };
-
-    const handleTouchMovePrevent = (e: TouchEvent) => {
-      // If panning inside the map with one finger, prevent browser from scrolling the body
-      if (e.touches.length === 1) {
-        e.preventDefault();
-      }
-    };
-
-    container.addEventListener("wheel", handleWheel, { passive: false });
-    container.addEventListener("touchmove", handleTouchMovePrevent, { passive: false });
-
-    return () => {
-      container.removeEventListener("wheel", handleWheel);
-      container.removeEventListener("touchmove", handleTouchMovePrevent);
-    };
-  }, []);
-
   const handleReset = () => {
     setZoom(1);
-    if (containerRef.current) {
-      const containerWidth = containerRef.current.clientWidth;
-      const containerHeight = containerRef.current.clientHeight;
-      const x = Math.max(30, (containerWidth - canvasWidth) / 2);
-      const y = Math.max(30, (containerHeight - canvasHeight) / 2);
-      setOffset({ x, y });
-    }
-  };
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button !== 0) return; // Only drag on left click
-    setIsDragging(true);
-    setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    setOffset({
-      x: e.clientX - dragStart.x,
-      y: e.clientY - dragStart.y
-    });
-  };
-
-  const handleMouseUpOrLeave = () => {
-    setIsDragging(false);
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length !== 1) return;
-    const touch = e.touches[0];
-    setIsDragging(true);
-    setDragStart({ x: touch.clientX - offset.x, y: touch.clientY - offset.y });
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging || e.touches.length !== 1) return;
-    const touch = e.touches[0];
-    setOffset({
-      x: touch.clientX - dragStart.x,
-      y: touch.clientY - dragStart.y
-    });
-  };
-
-  const handleTouchEnd = () => {
-    setIsDragging(false);
   };
 
   // Find parents to draw paths
@@ -465,34 +368,25 @@ const KillLineageForest = ({ players, killLog }: { players: Player[]; killLog: K
         </div>
       ) : (
         <div className={isFullScreen ? "relative flex flex-col flex-1 min-h-0 mt-3" : "relative"}>
-          {/* Drag helper for mobile */}
+          {/* Scroll helper for mobile */}
           <div className="absolute top-2 right-2 z-10 bg-[#1b4332]/95 backdrop-blur-xs text-[#e9f5ed] border border-[#dce6e1]/20 text-[8px] font-bold uppercase px-2.5 py-1 rounded-full shadow-xs pointer-events-none md:hidden animate-pulse">
-            🖐️ Drag to explore map
+            📱 Swipe to explore map
           </div>
 
           <div
             ref={containerRef}
-            className={`rounded-2xl border border-[#dce6e1]/60 bg-[#FAF9F5] overflow-hidden select-none relative ${isFullScreen ? "flex-1 w-full" : "h-[480px]"
-              } ${isDragging ? "cursor-grabbing" : "cursor-grab"
-              }`}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUpOrLeave}
-            onMouseLeave={() => {
-              handleMouseUpOrLeave();
-              setHoveredName(null);
-            }}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
+            className={`rounded-2xl border border-[#dce6e1]/60 bg-[#FAF9F5] overflow-auto relative ${isFullScreen ? "flex-1 w-full" : "h-[480px]"}`}
+            style={{ scrollbarWidth: "thin" }}
+            onMouseLeave={() => setHoveredName(null)}
           >
-            {/* Translated wrapper for Google-maps drag panning */}
+            {/* Native Scroll Wrapper */}
             <div
-              className="absolute origin-top-left transition-transform duration-75 ease-out grid-backdrop"
+              className="relative origin-top-left transition-all duration-200 ease-out grid-backdrop p-8"
               style={{
-                width: `${canvasWidth}px`,
-                height: `${canvasHeight}px`,
-                transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`
+                width: `${canvasWidth * zoom}px`,
+                height: `${canvasHeight * zoom}px`,
+                transform: `scale(${zoom})`,
+                transformOrigin: "top left"
               }}
             >
               {/* Micro floating sparks */}
