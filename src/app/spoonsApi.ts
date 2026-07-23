@@ -323,8 +323,8 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
   finalKillLog.sort((a, b) => {
     const playerA = filteredMappedPlayers.find(p => p.name === a.victimName);
     const playerB = filteredMappedPlayers.find(p => p.name === b.victimName);
-    const timeA = playerA ? (deathTimesMap[playerA.id] || 0) : 0;
-    const timeB = playerB ? (deathTimesMap[playerB.id] || 0) : 0;
+    const timeA = playerA ? (deathTimesMap[playerA.id] || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER;
+    const timeB = playerB ? (deathTimesMap[playerB.id] || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER;
     return timeA - timeB;
   });
 
