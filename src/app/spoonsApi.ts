@@ -319,6 +319,15 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
     }
   });
 
+  // Sort reconstructed kill log entries by their death timestamp
+  finalKillLog.sort((a, b) => {
+    const playerA = filteredMappedPlayers.find(p => p.name === a.victimName);
+    const playerB = filteredMappedPlayers.find(p => p.name === b.victimName);
+    const timeA = playerA ? (deathTimesMap[playerA.id] || 0) : 0;
+    const timeB = playerB ? (deathTimesMap[playerB.id] || 0) : 0;
+    return timeA - timeB;
+  });
+
   // Re-map the date in finalKillLog using the updated player killDates
   finalKillLog.forEach(log => {
     if (log.id.startsWith("reconstructed-")) {

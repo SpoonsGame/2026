@@ -970,105 +970,118 @@ export default function KillCamDashboard() {
   const handleReportDeathSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!camperSession) return;
+    setIsLoading(true);
 
-    const victimId = camperSession.id;
-    const victim = gameState.players.find(p => p.id === victimId);
-    if (!victim || victim.isDead) return;
-
-    const hunter = gameState.players.find(p => p.targetId === victimId && !p.isDead);
-    if (!hunter) {
-      showToast("⚠️ Could not find your active hunter. Contact Jonah.");
-      return;
-    }
-
-    const killDate = new Date().toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit"
-    });
-
-    const reason = "Eliminated in the hunt";
-    const killerName = hunter.name;
-
-    const updatedPlayers = gameState.players.map(p => {
-      if (p.id === victimId) {
-        return {
-          ...p,
-          isDead: true,
-          killDate,
-          deathReason: reason,
-          eliminatedBy: killerName
-        };
-      }
-      if (p.id === hunter.id) {
-        const targetId = victim.targetId === hunter.id ? null : victim.targetId;
-        return {
-          ...p,
-          targetId
-        };
-      }
-      return p;
-    });
-
-    const newLogEntry: KillLogEntry = {
-      id: Date.now().toString() + "-" + victimId,
-      killerName: killerName,
-      victimName: victim.name,
-      date: killDate,
-      reason
-    };
-
-    const killTime = Date.now();
-    const updatedDeathTimes = {
-      ...(gameState.deathTimes || {}),
-      [victimId]: killTime
-    };
-    const updatedState: GameState = {
-      ...gameState,
-      players: updatedPlayers,
-      killLog: [...gameState.killLog, newLogEntry],
-      lastKillTime: killTime,
-      deathTimes: updatedDeathTimes
-    };
-
-    await commitState(updatedState);
-
-    // Sync elimination to Google Sheets (non-blocking background task)
     try {
-      eliminatePlayerInSheet(victim.pin, hunter.pin);
-
-      // Update target assignment for the hunter in Google Sheets
-      const targetId = victim.targetId === hunter.id ? null : victim.targetId;
-      const targetPlayer = targetId ? gameState.players.find(p => p.id === targetId) : null;
-      const targetName = targetPlayer ? targetPlayer.name : "None";
-
-      const hunterParts = hunter.name.split(" ");
-      const hunterFirst = hunterParts[0];
-      const hunterLast = hunterParts.slice(1).join(" ") || " ";
-      assignTargetInSheet(hunterFirst, hunterLast, targetName);
-
-      // Update metadata with new kill time and death log
-      const startTime = gameState.gameStartTime || Date.now();
-      const deathsStr = Object.entries(updatedDeathTimes)
-        .map(([pid, ts]) => `${pid}:${ts}`)
-        .join(",");
-      if (!gameState.systemMetadataExists) {
-        await addPlayerToSheet("System", "Metadata", "0000");
+      const remoteState = await fetchStateFromRemote();
+      if (!remoteState) {
+        showToast("⚠️ Could not reach database. Try again.");
+        setIsLoading(false);
+        return;
       }
-      assignTargetInSheet("System", "Metadata", `START_${startTime}_LAST_${killTime}_DEATHS_${deathsStr}`);
-    } catch (error) {
-      console.error("Failed to sync self-reported elimination to Google Sheets:", error);
-    }
 
-    const updatedSelf = updatedPlayers.find(p => p.id === victimId) || null;
-    setCamperSession(updatedSelf);
-    if (updatedSelf) {
-      sessionStorage.setItem("spoons_camper_session", JSON.stringify(updatedSelf));
-    }
+      const victimId = camperSession.id;
+      const victim = remoteState.players.find(p => p.id === victimId);
+      if (!victim || victim.isDead) {
+        setIsLoading(false);
+        return;
+      }
 
-    setIsReportDeathOpen(false);
-    showToast("💀 Death recorded. You are officially spooned.");
+      const hunter = remoteState.players.find(p => p.targetId === victimId && !p.isDead);
+      if (!hunter) {
+        showToast("⚠️ Could not find your active hunter. Contact Jonah.");
+        setIsLoading(false);
+        return;
+      }
+
+      const killDate = new Date().toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+
+      const reason = "Eliminated in the hunt";
+      const killerName = hunter.name;
+
+      const updatedPlayers = gameState.players.map(p => {
+        if (p.id === victimId) {
+          return {
+            ...p,
+            isDead: true,
+            killDate,
+            deathReason: reason,
+            eliminatedBy: killerName
+          };
+        }
+        return p;
+      });
+
+      const newLogEntry: KillLogEntry = {
+        id: Date.now().toString() + "-" + victimId,
+        killerName: killerName,
+        victimName: victim.name,
+        date: killDate,
+        reason
+      };
+
+      const killTime = Date.now();
+      const updatedDeathTimes = {
+        ...(gameState.deathTimes || {}),
+        [victimId]: killTime
+      };
+
+      const updatedState: GameState = {
+        ...gameState,
+        players: updatedPlayers,
+        killLog: [...gameState.killLog, newLogEntry],
+        lastKillTime: killTime,
+        deathTimes: updatedDeathTimes
+      };
+
+      await commitState(updatedState);
+
+      // Sync elimination to Google Sheets (non-blocking background task)
+      try {
+        eliminatePlayerInSheet(victim.pin, hunter.pin);
+
+        // Update target assignment for the hunter in Google Sheets
+        const targetId = victim.targetId === hunter.id ? null : victim.targetId;
+        const targetPlayer = targetId ? remoteState.players.find(p => p.id === targetId) : null;
+        const targetName = targetPlayer ? targetPlayer.name : "None";
+
+        const hunterParts = hunter.name.split(" ");
+        const hunterFirst = hunterParts[0];
+        const hunterLast = hunterParts.slice(1).join(" ") || " ";
+        assignTargetInSheet(hunterFirst, hunterLast, targetName);
+
+        // Update metadata with new kill time and death log
+        const startTime = gameState.gameStartTime || Date.now();
+        const deathsStr = Object.entries(updatedDeathTimes)
+          .map(([pid, ts]) => `${pid}:${ts}`)
+          .join(",");
+        if (!gameState.systemMetadataExists) {
+          await addPlayerToSheet("System", "Metadata", "0000");
+        }
+        assignTargetInSheet("System", "Metadata", `START_${startTime}_LAST_${killTime}_DEATHS_${deathsStr}`);
+      } catch (error) {
+        console.error("Failed to sync self-reported elimination to Google Sheets:", error);
+      }
+
+      const updatedSelf = updatedPlayers.find(p => p.id === victimId) || null;
+      setCamperSession(updatedSelf);
+      if (updatedSelf) {
+        sessionStorage.setItem("spoons_camper_session", JSON.stringify(updatedSelf));
+      }
+
+      setIsReportDeathOpen(false);
+      showToast("💀 Death recorded. You are officially spooned.");
+    } catch (err) {
+      console.error(err);
+      showToast("⚠️ Something went wrong. Contact Jonah.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const sortedCamperNames = useMemo(() => {
