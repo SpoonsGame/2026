@@ -519,8 +519,8 @@ const KillLineageForest = ({ players, killLog }: { players: Player[]; killLog: K
                   </defs>
 
                   {connectionPaths.map(path => {
-                    const isPathHighlighted = hasHighlight && activeLineageNames.has(path.from.name) && activeLineageNames.has(path.to.name);
-                    const pathOpacity = hasHighlight ? (isPathHighlighted ? "1" : "0.12") : "0.45";
+                     const isPathHighlighted = true;
+                     const pathOpacity = "1";
 
                     // Card width = 160, half width = 80. exit parent from left edge, enter child from left edge
                     const fromX = path.from.x - 80;
@@ -559,8 +559,8 @@ const KillLineageForest = ({ players, killLog }: { players: Player[]; killLog: K
                 {layoutNodes.map(node => {
                   const isDead = node.isDead;
                   const killCount = players.filter(p => p.isDead && p.eliminatedBy === node.name).length;
-                  const isCardHighlighted = hasHighlight && activeLineageNames.has(node.name);
-                  const cardOpacity = hasHighlight ? (isCardHighlighted ? "1" : "0.2") : "1";
+                  const isCardHighlighted = true;
+                  const cardOpacity = "1";
 
                   // Compute victim order badge index if dead
                   const victimIndex = isDead && node.eliminatedBy

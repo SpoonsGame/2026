@@ -633,8 +633,8 @@ export default function LiveMapPage() {
                   </defs>
 
                   {connectionPaths.map(path => {
-                    const isPathHighlighted = hasHighlight && activeLineageNames.has(path.from.name) && activeLineageNames.has(path.to.name);
-                    const pathOpacity = hasHighlight ? (isPathHighlighted ? "1" : "0.12") : "0.45";
+                    const isPathHighlighted = true;
+                    const pathOpacity = "1";
 
                     const fromX = path.from.x - 80;
                     const fromY = path.from.y;
@@ -672,8 +672,8 @@ export default function LiveMapPage() {
                 {layoutNodes.map(node => {
                   const isDead = node.isDead;
                   const killCount = gameState.players.filter(p => p.isDead && p.eliminatedBy === node.name).length;
-                  const isCardHighlighted = hasHighlight && activeLineageNames.has(node.name);
-                  const cardOpacity = hasHighlight ? (isCardHighlighted ? "1" : "0.2") : "1";
+                  const isCardHighlighted = true;
+                  const cardOpacity = "1";
                   
                   const victimIndex = isDead && node.eliminatedBy 
                     ? getVictimOrdinal(node.name, node.eliminatedBy, gameState.players, gameState.killLog)
