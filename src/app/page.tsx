@@ -812,10 +812,11 @@ export default function KillCamDashboard() {
     let startDateStr = "";
     let midDateStr = "";
     let endDateStr = "";
+    const totalGameDead = players.filter(p => p.isDead).length;
     if (deadWithTimestamps.length > 0 && startTime) {
       const endTime = gameState.lastKillTime || Date.now();
       const timeRange = Math.max(1, endTime - startTime);
-      const maxKills = deadWithTimestamps.length;
+      const maxKills = totalGameDead || 1;
       
       startDateStr = new Date(startTime).toLocaleDateString("en-US", { month: "short", day: "numeric" });
       endDateStr = new Date(endTime).toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -843,7 +844,7 @@ export default function KillCamDashboard() {
       startDateStr,
       midDateStr,
       endDateStr,
-      totalDead: deadWithTimestamps.length
+      totalDead: totalGameDead
     };
   }, [gameState.players, gameState.gameStartTime, gameState.lastKillTime, gameState.deathTimes]);
 
