@@ -51,6 +51,7 @@ export default function KillCamSettings() {
 
   // Search filter state
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchMode, setSearchMode] = useState<"name" | "all">("name");
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -132,22 +133,35 @@ export default function KillCamSettings() {
   const alivePlayers = useMemo(() => gameState.players.filter(p => !p.isDead), [gameState.players]);
   const deadPlayers = useMemo(() => gameState.players.filter(p => p.isDead), [gameState.players]);
 
-  // Filtered players by search query
-  const filteredPlayers = useMemo(() => {
-    return gameState.players.filter(p =>
-      p.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [gameState.players, searchQuery]);
-  
-  const deadTodayCount = useMemo(() => {
-    const todayStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    return gameState.players.filter(p => p.isDead && p.killDate && p.killDate.includes(todayStr)).length;
-  }, [gameState.players]);
-
   const getTargetFor = useCallback((playerId: string) => {
     const player = gameState.players.find(p => p.id === playerId);
     if (!player || !player.targetId) return null;
     return gameState.players.find(p => p.id === player.targetId) ?? null;
+  }, [gameState.players]);
+
+  // Filtered players by search query and mode
+  const filteredPlayers = useMemo(() => {
+    if (!searchQuery.trim()) return gameState.players;
+    const query = searchQuery.toLowerCase();
+    return gameState.players.filter(p => {
+      if (searchMode === "name") {
+        return p.name.toLowerCase().includes(query);
+      } else {
+        const target = getTargetFor(p.id);
+        const targetName = target ? target.name.toLowerCase() : "";
+        const killerName = p.eliminatedBy ? p.eliminatedBy.toLowerCase() : "";
+        return (
+          p.name.toLowerCase().includes(query) ||
+          targetName.includes(query) ||
+          killerName.includes(query)
+        );
+      }
+    });
+  }, [gameState.players, searchQuery, searchMode, getTargetFor]);
+  
+  const deadTodayCount = useMemo(() => {
+    const todayStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return gameState.players.filter(p => p.isDead && p.killDate && p.killDate.includes(todayStr)).length;
   }, [gameState.players]);
 
   // Authenticate Admin
@@ -704,23 +718,50 @@ export default function KillCamSettings() {
 
                 {/* SEARCH FILTER */}
                 {gameState.players.length > 0 && (
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Search campers by name..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full bg-[#fdfbf7] border border-[#dce6e1] rounded-xl pl-9 pr-8 py-2 text-base md:text-xs focus:outline-none text-slate-800"
-                    />
-                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                    {searchQuery && (
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder={searchMode === "name" ? "Search campers by name..." : "Search name, target, or killer..."}
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full bg-[#fdfbf7] border border-[#dce6e1] rounded-xl pl-9 pr-8 py-2 text-base md:text-xs focus:outline-none text-slate-800"
+                      />
+                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      {searchQuery && (
+                        <button
+                          onClick={() => setSearchQuery("")}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-650"
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
+                    
+                    <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit">
                       <button
-                        onClick={() => setSearchQuery("")}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-650"
+                        type="button"
+                        onClick={() => setSearchMode("name")}
+                        className={`px-3 py-1.5 rounded-lg text-4xs font-black uppercase tracking-wider transition-all ${
+                          searchMode === "name"
+                            ? "bg-[#1b4332] text-white shadow-xs"
+                            : "text-slate-500 hover:text-slate-700"
+                        }`}
                       >
-                        <X size={12} />
+                        🔍 Name Only
                       </button>
-                    )}
+                      <button
+                        type="button"
+                        onClick={() => setSearchMode("all")}
+                        className={`px-3 py-1.5 rounded-lg text-4xs font-black uppercase tracking-wider transition-all ${
+                          searchMode === "all"
+                            ? "bg-[#1b4332] text-white shadow-xs"
+                            : "text-slate-500 hover:text-slate-700"
+                        }`}
+                      >
+                        🔗 Connections (Name/Target/Killer)
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -793,11 +834,9 @@ export default function KillCamSettings() {
                                 </div>
                                 
                                 <div className="text-3xs text-slate-400 font-medium mt-1 space-y-0.5">
-                                  {!p.isDead && (
-                                    <p className="text-[#d97706] font-bold">
-                                      🎯 Target: {target ? target.name : "None (Start game required)"}
-                                    </p>
-                                  )}
+                                  <p className="text-[#d97706] font-bold">
+                                    🎯 Target: {target ? target.name : (gameState.gameStarted ? "None" : "None (Start game required)")}
+                                  </p>
                                   {p.isDead && p.eliminatedBy && (
                                     <p className="text-rose-800 font-bold">
                                       ☠️ Spooned by: {p.eliminatedBy}
