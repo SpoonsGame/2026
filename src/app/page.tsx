@@ -1134,28 +1134,30 @@ export default function KillCamDashboard() {
         <Flame className="text-amber-500 fill-amber-500/20" size={14} />
         KILL FEED
       </h3>
-
       <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-        {gameState.killLog.length === 0 ? (
+        {gameState.killLog.filter(log => log.date !== "Recent").length === 0 ? (
           <p className="text-xs text-slate-400 italic text-center py-6">
             Quiet reigns in the forest. No spoonings logged.
           </p>
         ) : (
-          [...gameState.killLog].reverse().map(log => (
-            <div
-              key={log.id}
-              className="bg-[#fdfbf7] border-l-2 border-rose-500 rounded-xl p-3 space-y-1 relative overflow-hidden"
-            >
-              <div className="flex justify-between items-start">
-                <span className="text-[11px] text-slate-700 font-extrabold">{log.killerName}</span>
-                <span className="text-[9px] text-slate-400 font-semibold">{log.date}</span>
-              </div>
+          [...gameState.killLog]
+            .filter(log => log.date !== "Recent")
+            .reverse()
+            .map(log => (
+              <div
+                key={log.id}
+                className="bg-[#fdfbf7] border-l-2 border-rose-500 rounded-xl p-3 space-y-1 relative overflow-hidden"
+              >
+                <div className="flex justify-between items-start">
+                  <span className="text-[11px] text-slate-700 font-extrabold">{log.killerName}</span>
+                  <span className="text-[9px] text-slate-400 font-semibold">{log.date}</span>
+                </div>
 
-              <div className="text-[10px] text-rose-700 font-medium flex items-center gap-0.5">
-                spooned <ArrowRight size={10} /> <span className="font-bold">{log.victimName}</span>
+                <div className="text-[10px] text-rose-700 font-medium flex items-center gap-0.5">
+                  spooned <ArrowRight size={10} /> <span className="font-bold">{log.victimName}</span>
+                </div>
               </div>
-            </div>
-          ))
+            ))
         )}
       </div>
     </div>
