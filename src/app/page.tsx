@@ -1116,11 +1116,10 @@ export default function KillCamDashboard() {
   const renderLethalAnalytics = () => (
     <div className="bg-white border border-[#dce6e1] rounded-3xl p-6 shadow-sm space-y-4">
       <div className="flex justify-between items-center border-b border-[#dce6e1]/40 pb-3">
-        <h3 className="text-xs font-black text-[#1b4332] uppercase tracking-widest flex items-center gap-1.5">
+        <h3 className="text-xs font-black text-[#1b4332] tracking-widest flex items-center gap-1.5">
           <TrendingUp className="text-[#2d6a4f]" size={14} />
-          LETHAL ANALYTICS
+          Perhaps some stats?
         </h3>
-        <span className="text-3xs text-slate-400 font-bold uppercase">Activity & Spikes</span>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
