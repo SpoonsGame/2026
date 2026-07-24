@@ -809,19 +809,28 @@ export default function KillCamDashboard() {
     }
     
     const chartPoints: { x: number; y: number; name: string }[] = [];
+    let startDateStr = "";
+    let midDateStr = "";
+    let endDateStr = "";
     if (deadWithTimestamps.length > 0 && startTime) {
       const endTime = gameState.lastKillTime || Date.now();
       const timeRange = Math.max(1, endTime - startTime);
       const maxKills = deadWithTimestamps.length;
       
-      chartPoints.push({ x: 0, y: 120, name: "Start" });
+      startDateStr = new Date(startTime).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      endDateStr = new Date(endTime).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      
+      const midTime = startTime + timeRange / 2;
+      midDateStr = new Date(midTime).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      
+      chartPoints.push({ x: 25, y: 120, name: "Start" });
       
       deadWithTimestamps.forEach((item, index) => {
         const xPercent = (item.timestamp - startTime) / timeRange;
         const yPercent = (index + 1) / maxKills;
         chartPoints.push({
-          x: xPercent * 300,
-          y: 120 - yPercent * 100,
+          x: 25 + xPercent * 265, // [25, 290] range for left axis label padding
+          y: 120 - yPercent * 100, // [20, 120] range for top axis label padding
           name: item.name
         });
       });
@@ -830,7 +839,11 @@ export default function KillCamDashboard() {
     return {
       avgSurvivalStr,
       dangerousHourStr,
-      chartPoints
+      chartPoints,
+      startDateStr,
+      midDateStr,
+      endDateStr,
+      totalDead: deadWithTimestamps.length
     };
   }, [gameState.players, gameState.gameStartTime, gameState.lastKillTime, gameState.deathTimes]);
 
@@ -1137,7 +1150,7 @@ export default function KillCamDashboard() {
         <div className="space-y-2">
           <p className="text-4xs text-slate-400 font-black uppercase tracking-wider">Spoonings Progression</p>
           <div className="relative bg-[#faf9f5] border border-[#dce6e1]/60 rounded-2xl p-3 overflow-hidden">
-            <svg viewBox="0 0 300 120" className="w-full h-auto overflow-visible">
+            <svg viewBox="0 0 300 138" className="w-full h-auto overflow-visible">
               <defs>
                 <linearGradient id="chartGrad" x1="0%" y1="0%" x2="0%" y2="100%">
                   <stop offset="0%" stopColor="#ef4444" stopOpacity="0.2" />
@@ -1146,13 +1159,23 @@ export default function KillCamDashboard() {
               </defs>
               
               {/* Grid lines */}
-              <line x1="0" y1="120" x2="300" y2="120" stroke="#dce6e1" strokeWidth="1" strokeDasharray="3 3" />
-              <line x1="0" y1="70" x2="300" y2="70" stroke="#dce6e1" strokeWidth="1" strokeDasharray="3 3" />
-              <line x1="0" y1="20" x2="300" y2="20" stroke="#dce6e1" strokeWidth="1" strokeDasharray="3 3" />
+              <line x1="25" y1="120" x2="295" y2="120" stroke="#dce6e1" strokeWidth="1" strokeDasharray="3 3" />
+              <line x1="25" y1="70" x2="295" y2="70" stroke="#dce6e1" strokeWidth="1" strokeDasharray="3 3" />
+              <line x1="25" y1="20" x2="295" y2="20" stroke="#dce6e1" strokeWidth="1" strokeDasharray="3 3" />
+              
+              {/* Vertical Tick lines */}
+              <line x1="25" y1="20" x2="25" y2="120" stroke="#dce6e1" strokeWidth="1" />
+              <line x1="160" y1="20" x2="160" y2="124" stroke="#dce6e1" strokeWidth="1" strokeDasharray="3 3" opacity="0.6" />
+              <line x1="295" y1="20" x2="295" y2="124" stroke="#dce6e1" strokeWidth="1" strokeDasharray="3 3" opacity="0.6" />
+
+              {/* Y Axis Numbers (Spoonings Count Ladder) */}
+              <text x="5" y="23" fill="#94a3b8" fontSize="7.5" fontWeight="900">{analyticsData.totalDead}</text>
+              <text x="5" y="73" fill="#94a3b8" fontSize="7.5" fontWeight="900">{Math.round(analyticsData.totalDead / 2)}</text>
+              <text x="5" y="123" fill="#94a3b8" fontSize="7.5" fontWeight="900">0</text>
               
               {/* Fill under the path */}
               <path
-                d={`${analyticsData.chartPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')} L 300 120 L 0 120 Z`}
+                d={`${analyticsData.chartPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')} L ${analyticsData.chartPoints[analyticsData.chartPoints.length - 1].x} 120 L 25 120 Z`}
                 fill="url(#chartGrad)"
               />
               
@@ -1176,13 +1199,17 @@ export default function KillCamDashboard() {
                   </g>
                 );
               })()}
+
+              {/* X Axis Dates (Timeline Ladder) */}
+              <text x="25" y="134" fill="#94a3b8" fontSize="7.5" fontWeight="900" textAnchor="start">{analyticsData.startDateStr}</text>
+              <text x="160" y="134" fill="#94a3b8" fontSize="7.5" fontWeight="900" textAnchor="middle">{analyticsData.midDateStr}</text>
+              <text x="295" y="134" fill="#94a3b8" fontSize="7.5" fontWeight="900" textAnchor="end">{analyticsData.endDateStr}</text>
             </svg>
-            <div className="flex justify-between items-center text-[8px] text-slate-400 font-bold uppercase mt-1.5 px-0.5">
-              <span>{gameState.gameStartTime ? new Date(gameState.gameStartTime).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Start"}</span>
+            <div className="flex justify-between items-center text-[8px] text-slate-400 font-bold uppercase mt-1.5 px-0.5 border-t border-[#dce6e1]/40 pt-2">
+              <span>{gameState.players.filter(p => !p.isDead).length} Survivors Left</span>
               <span className="bg-rose-50 border border-rose-200 text-rose-600 px-2 py-0.5 rounded-full font-black normal-case scale-95">
                 🔥 {gameState.players.length > 0 ? Math.round((gameState.players.filter(p => p.isDead).length / gameState.players.length) * 100) : 0}% Spooned (Progress)
               </span>
-              <span>{gameState.players.filter(p => !p.isDead).length} Survivors Left</span>
             </div>
           </div>
         </div>
