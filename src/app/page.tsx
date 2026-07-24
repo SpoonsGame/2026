@@ -1179,9 +1179,11 @@ export default function KillCamDashboard() {
               })()}
             </svg>
             <div className="flex justify-between items-center text-[8px] text-slate-400 font-bold uppercase mt-1.5 px-0.5">
-              <span>Start</span>
-              <span>{gameState.players.filter(p => p.isDead).length} Spoonings Total</span>
-              <span>Latest</span>
+              <span>{gameState.gameStartTime ? new Date(gameState.gameStartTime).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Start"}</span>
+              <span className="bg-rose-50 border border-rose-200 text-rose-600 px-2 py-0.5 rounded-full font-black normal-case scale-95">
+                🔥 {gameState.players.length > 0 ? Math.round((gameState.players.filter(p => p.isDead).length / gameState.players.length) * 100) : 0}% Spooned (Progress)
+              </span>
+              <span>{gameState.players.filter(p => !p.isDead).length} Survivors Left</span>
             </div>
           </div>
         </div>
