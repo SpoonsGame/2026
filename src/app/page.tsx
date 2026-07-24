@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Skull, Crown, BookOpen, Settings, RefreshCw, X, AlertTriangle, CheckCircle,
   ChevronDown, ChevronRight, LogOut, ArrowRight, UserPlus, Flame, Target, Maximize2, Minimize2,
-  ZoomIn, ZoomOut, Award
+  ZoomIn, ZoomOut, Award, TrendingUp
 } from "lucide-react";
 import { Player, KillLogEntry, GameState, fetchStateFromRemote, addPlayerToSheet, eliminatePlayerInSheet, assignTargetInSheet } from "./spoonsApi";
 import Link from "next/link";
@@ -758,6 +758,82 @@ export default function KillCamDashboard() {
     return gameState.players.find(p => p.id === player.targetId) ?? null;
   }, [gameState.players]);
 
+  const analyticsData = useMemo(() => {
+    const players = gameState.players;
+    const startTime = gameState.gameStartTime;
+    const deathTimes = gameState.deathTimes || {};
+    
+    const deadWithTimestamps = players
+      .filter(p => p.isDead && deathTimes[p.id])
+      .map(p => ({
+        id: p.id,
+        name: p.name,
+        timestamp: deathTimes[p.id]
+      }))
+      .sort((a, b) => a.timestamp - b.timestamp);
+      
+    let avgSurvivalStr = "N/A";
+    if (deadWithTimestamps.length > 0 && startTime) {
+      const totalDuration = deadWithTimestamps.reduce((sum, item) => sum + (item.timestamp - startTime), 0);
+      const avgMs = totalDuration / deadWithTimestamps.length;
+      const hours = avgMs / (1000 * 60 * 60);
+      if (hours > 24) {
+        avgSurvivalStr = `${(hours / 24).toFixed(1)} Days`;
+      } else {
+        avgSurvivalStr = `${hours.toFixed(1)} Hours`;
+      }
+    }
+    
+    let dangerousHourStr = "N/A";
+    if (deadWithTimestamps.length > 0) {
+      const hourCounts: Record<number, number> = {};
+      deadWithTimestamps.forEach(item => {
+        const hour = new Date(item.timestamp).getHours();
+        hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+      });
+      let maxHour = 0;
+      let maxCount = -1;
+      Object.entries(hourCounts).forEach(([h, count]) => {
+        if (count > maxCount) {
+          maxCount = count;
+          maxHour = parseInt(h);
+        }
+      });
+      
+      const ampm = maxHour >= 12 ? "PM" : "AM";
+      const displayHour = maxHour % 12 === 0 ? 12 : maxHour % 12;
+      const nextHour = (maxHour + 1) % 24;
+      const nextAmpm = nextHour >= 12 ? "PM" : "AM";
+      const nextDisplayHour = nextHour % 12 === 0 ? 12 : nextHour % 12;
+      dangerousHourStr = `${displayHour}:00 ${ampm} - ${nextDisplayHour}:00 ${nextAmpm}`;
+    }
+    
+    const chartPoints: { x: number; y: number; name: string }[] = [];
+    if (deadWithTimestamps.length > 0 && startTime) {
+      const endTime = gameState.lastKillTime || Date.now();
+      const timeRange = Math.max(1, endTime - startTime);
+      const maxKills = deadWithTimestamps.length;
+      
+      chartPoints.push({ x: 0, y: 120, name: "Start" });
+      
+      deadWithTimestamps.forEach((item, index) => {
+        const xPercent = (item.timestamp - startTime) / timeRange;
+        const yPercent = (index + 1) / maxKills;
+        chartPoints.push({
+          x: xPercent * 300,
+          y: 120 - yPercent * 100,
+          name: item.name
+        });
+      });
+    }
+    
+    return {
+      avgSurvivalStr,
+      dangerousHourStr,
+      chartPoints
+    };
+  }, [gameState.players, gameState.gameStartTime, gameState.lastKillTime, gameState.deathTimes]);
+
   // Handle Camper Registration
   const handleSignUpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1034,6 +1110,82 @@ export default function KillCamDashboard() {
         </div>
         <p className="text-[7.5px] text-slate-400 font-bold uppercase tracking-wider mt-0.5 truncate">{formattedLastKillTime}</p>
       </div>
+    </div>
+  );
+
+  const renderLethalAnalytics = () => (
+    <div className="bg-white border border-[#dce6e1] rounded-3xl p-6 shadow-sm space-y-4">
+      <div className="flex justify-between items-center border-b border-[#dce6e1]/40 pb-3">
+        <h3 className="text-xs font-black text-[#1b4332] uppercase tracking-widest flex items-center gap-1.5">
+          <TrendingUp className="text-[#2d6a4f]" size={14} />
+          LETHAL ANALYTICS
+        </h3>
+        <span className="text-3xs text-slate-400 font-bold uppercase">Activity & Spikes</span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-[#fdfbf7] border border-[#dce6e1] rounded-2xl p-3 text-center">
+          <p className="text-4xs text-slate-400 font-black uppercase tracking-wider">Avg Survival Time</p>
+          <h4 className="text-sm font-black text-[#1b4332] mt-1">{analyticsData.avgSurvivalStr}</h4>
+        </div>
+        <div className="bg-[#fdfbf7] border border-[#dce6e1] rounded-2xl p-3 text-center">
+          <p className="text-4xs text-slate-400 font-black uppercase tracking-wider">Peak Spoon Hour</p>
+          <h4 className="text-sm font-black text-rose-700 mt-1">{analyticsData.dangerousHourStr}</h4>
+        </div>
+      </div>
+
+      {analyticsData.chartPoints.length > 1 && (
+        <div className="space-y-2">
+          <p className="text-4xs text-slate-400 font-black uppercase tracking-wider">Spoonings Progression</p>
+          <div className="relative bg-[#faf9f5] border border-[#dce6e1]/60 rounded-2xl p-3 overflow-hidden">
+            <svg viewBox="0 0 300 120" className="w-full h-auto overflow-visible">
+              <defs>
+                <linearGradient id="chartGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#ef4444" stopOpacity="0.2" />
+                  <stop offset="100%" stopColor="#ef4444" stopOpacity="0.0" />
+                </linearGradient>
+              </defs>
+              
+              {/* Grid lines */}
+              <line x1="0" y1="120" x2="300" y2="120" stroke="#dce6e1" strokeWidth="1" strokeDasharray="3 3" />
+              <line x1="0" y1="70" x2="300" y2="70" stroke="#dce6e1" strokeWidth="1" strokeDasharray="3 3" />
+              <line x1="0" y1="20" x2="300" y2="20" stroke="#dce6e1" strokeWidth="1" strokeDasharray="3 3" />
+              
+              {/* Fill under the path */}
+              <path
+                d={`${analyticsData.chartPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')} L 300 120 L 0 120 Z`}
+                fill="url(#chartGrad)"
+              />
+              
+              {/* Path line */}
+              <path
+                d={analyticsData.chartPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')}
+                fill="none"
+                stroke="#ef4444"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              
+              {/* Pulsing indicator on last point */}
+              {(() => {
+                const lp = analyticsData.chartPoints[analyticsData.chartPoints.length - 1];
+                return (
+                  <g>
+                    <circle cx={lp.x} cy={lp.y} r="6" fill="#ef4444" opacity="0.3" className="animate-pulse" />
+                    <circle cx={lp.x} cy={lp.y} r="3.5" fill="#ef4444" />
+                  </g>
+                );
+              })()}
+            </svg>
+            <div className="flex justify-between items-center text-[8px] text-slate-400 font-bold uppercase mt-1.5 px-0.5">
+              <span>Start</span>
+              <span>{gameState.players.filter(p => p.isDead).length} Spoonings Total</span>
+              <span>Latest</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -1502,6 +1654,7 @@ export default function KillCamDashboard() {
               </div>
               <div className="col-span-5 space-y-6">
                 {renderStats()}
+                {renderLethalAnalytics()}
                 {renderDossier()}
                 {renderFeed()}
               </div>
@@ -1510,6 +1663,7 @@ export default function KillCamDashboard() {
             {/* MOBILE-OPTIMIZED LAYOUT (Single Column with exact ordered elements) */}
             <div className="flex flex-col gap-6 lg:hidden">
               {renderStats()}
+              {renderLethalAnalytics()}
               {renderDossier()}
               {renderFlowChart()}
               {renderLeaderboard()}
