@@ -560,12 +560,23 @@ export default function KillCamDashboard() {
 
   // Compute elapsed time in hours and minutes
   const formattedElapsedTime = useMemo(() => {
-    if (!gameState.gameStarted || !gameState.gameStartTime) return "0h 0m";
+    if (!gameState.gameStarted || !gameState.gameStartTime) return "0 hours";
     const diffMs = currentTime - gameState.gameStartTime;
-    if (diffMs < 0) return "0h 0m";
-    const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    return `${diffHrs}h ${diffMins}m`;
+    if (diffMs < 0) return "0 hours";
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHrs = Math.floor(diffMins / 60);
+    const remainingMins = diffMins % 60;
+    
+    if (diffHrs >= 24) {
+      const days = Math.floor(diffHrs / 24);
+      const remainingHrs = diffHrs % 24;
+      return `${days} ${days === 1 ? "day" : "days"} ${remainingHrs} ${remainingHrs === 1 ? "hour" : "hours"}`;
+    } else {
+      if (diffHrs > 0) {
+        return `${diffHrs} ${diffHrs === 1 ? "hour" : "hours"} ${remainingMins} ${remainingMins === 1 ? "minute" : "minutes"}`;
+      }
+      return `${remainingMins} ${remainingMins === 1 ? "minute" : "minutes"}`;
+    }
   }, [gameState.gameStarted, gameState.gameStartTime, currentTime]);
 
   // Compute time since last kill
@@ -1120,7 +1131,7 @@ export default function KillCamDashboard() {
       <div className="bg-white border border-[#dce6e1] rounded-2xl p-4 shadow-sm text-center flex flex-col justify-between min-h-[82px]">
         <div>
           <p className="text-4xs text-emerald-600 font-black uppercase tracking-wider">Game Duration</p>
-          <h4 className="text-xl font-black text-[#1b4332] mt-1">{formattedElapsedTime}</h4>
+          <h4 className="text-[13px] sm:text-sm md:text-[15px] leading-tight font-black text-[#1b4332] mt-1.5">{formattedElapsedTime}</h4>
         </div>
         <p className="text-[7.5px] text-slate-400 font-bold uppercase tracking-wider mt-0.5 truncate">{formattedLastKillTime}</p>
       </div>
