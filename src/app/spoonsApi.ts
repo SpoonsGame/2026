@@ -302,11 +302,23 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
   // Remove System Metadata player and soft-deleted players from final list
   const filteredMappedPlayers = mappedPlayers.filter(p => p.name !== "System Metadata" && !deletedSet.has(p.id));
 
-  // Assign killDate for each dead player using deathTimesMap
+  // Helper to recursively estimate death times for manual spreadsheet overrides
+  const getEstimatedDeathTime = (playerId: string): number => {
+    if (deathTimesMap[playerId]) return deathTimesMap[playerId];
+    const player = filteredMappedPlayers.find(p => p.id === playerId);
+    if (!player || !player.isDead || !player.eliminatedBy) return Number.MAX_SAFE_INTEGER;
+    const killer = filteredMappedPlayers.find(k => k.name === player.eliminatedBy);
+    if (killer && killer.isDead) {
+      return getEstimatedDeathTime(killer.id) - 1;
+    }
+    return lastKillTime || gameStartTime || Date.now();
+  };
+
+  // Assign killDate for each dead player using estimated/actual death time
   filteredMappedPlayers.forEach(p => {
     if (p.isDead) {
-      const ts = deathTimesMap[p.id];
-      if (ts) {
+      const ts = getEstimatedDeathTime(p.id);
+      if (ts && ts !== Number.MAX_SAFE_INTEGER) {
         p.killDate = new Date(ts).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
@@ -318,18 +330,6 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
       }
     }
   });
-
-  // Helper to recursively estimate death times for manual spreadsheet overrides
-  const getEstimatedDeathTime = (playerId: string): number => {
-    if (deathTimesMap[playerId]) return deathTimesMap[playerId];
-    const player = filteredMappedPlayers.find(p => p.id === playerId);
-    if (!player || !player.isDead || !player.eliminatedBy) return Number.MAX_SAFE_INTEGER;
-    const killer = filteredMappedPlayers.find(p => p.name === player.eliminatedBy);
-    if (killer && killer.isDead) {
-      return getEstimatedDeathTime(killer.id) - 1;
-    }
-    return Date.now();
-  };
 
   // Sort reconstructed kill log entries by their death timestamp
   finalKillLog.sort((a, b) => {

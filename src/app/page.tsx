@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Player, KillLogEntry, GameState, fetchStateFromRemote, addPlayerToSheet, eliminatePlayerInSheet, assignTargetInSheet } from "./spoonsApi";
 import Link from "next/link";
+import confetti from "canvas-confetti";
 
 const CAMP_EMOJIS = ["⛺", "🌲", "🛶", "🐿️", "🐻", "🦌", "🔥", "🦅", "🦉"];
 
@@ -758,9 +759,38 @@ export default function KillCamDashboard() {
   const isGameOver = useMemo(() => firstSyncDone && gameState.gameStarted && alivePlayers.length === 1 && gameState.players.length >= 2, [gameState.players, alivePlayers, gameState.gameStarted, firstSyncDone]);
   const winner = useMemo(() => isGameOver ? alivePlayers[0] : null, [isGameOver, alivePlayers]);
 
+  // Trigger full-screen victory confetti when the game ends
+  useEffect(() => {
+    if (isGameOver && winner) {
+      // Fire initial burst
+      confetti({
+        particleCount: 150,
+        spread: 80,
+        origin: { y: 0.6 }
+      });
+      // Fire continuous small bursts for 5 seconds
+      const end = Date.now() + 5000;
+      const interval = setInterval(() => {
+        if (Date.now() > end) {
+          clearInterval(interval);
+          return;
+        }
+        confetti({
+          startVelocity: 30,
+          spread: 360,
+          ticks: 60,
+          origin: { x: Math.random(), y: Math.random() - 0.2 }
+        });
+      }, 250);
+      return () => clearInterval(interval);
+    }
+  }, [isGameOver, winner]);
+
   const deadTodayCount = useMemo(() => {
     const todayStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    return gameState.players.filter(p => p.isDead && p.killDate && p.killDate.includes(todayStr)).length;
+    return gameState.players.filter(p => 
+      p.isDead && p.killDate && (p.killDate.includes(todayStr) || p.killDate === "Recent")
+    ).length;
   }, [gameState.players]);
 
   const getTargetFor = useCallback((playerId: string) => {
@@ -1099,7 +1129,7 @@ export default function KillCamDashboard() {
         className="bg-gradient-to-r from-amber-500/10 via-yellow-500/5 to-amber-500/10 border-2 border-amber-400 rounded-3xl p-6 text-center shadow-sm relative overflow-hidden"
       >
         <div className="absolute top-0 right-0 text-7xl opacity-5">👑</div>
-        <h2 className="text-2xl font-black text-[#1b4332] tracking-tight uppercase">We Have a Champion!</h2>
+        <h2 className="text-2xl font-black text-[#1b4332] tracking-tight uppercase">The winner of Spoons!</h2>
         <div className="mt-4 inline-block bg-white px-6 py-2 rounded-2xl border-2 border-amber-400 text-lg font-black text-[#1b4332] tracking-wider shadow-sm">
           👑 {winner.name} 👑
         </div>
