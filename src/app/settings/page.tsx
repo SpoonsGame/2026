@@ -859,9 +859,17 @@ export default function KillCamSettings() {
                                   <button
                                     onClick={async () => {
                                       if (window.confirm(`Force eliminate ${p.name}?`)) {
+                                        setIsLoading(true);
                                         const killTime = Date.now();
+                                        let remoteState = null;
+                                        try {
+                                          remoteState = await fetchStateFromRemote();
+                                        } catch (e) {
+                                          console.error(e);
+                                        }
+                                        const activeDeathTimes = (remoteState && remoteState.deathTimes) || gameState.deathTimes || {};
                                         const updatedDeathTimes = {
-                                          ...(gameState.deathTimes || {}),
+                                          ...activeDeathTimes,
                                           [p.id]: killTime
                                         };
                                         const hunter = gameState.players.find(x => x.targetId === p.id && !x.isDead);
@@ -889,16 +897,18 @@ export default function KillCamSettings() {
                                           const killerPin = hunter ? hunter.pin : "0000";
                                           eliminatePlayerInSheet(victim.pin, killerPin);
 
-                                          const startTime = gameState.gameStartTime || Date.now();
+                                          const startTime = gameState.gameStartTime || (remoteState && remoteState.gameStartTime) || Date.now();
                                           const deathsStr = Object.entries(updatedDeathTimes)
                                             .map(([pid, ts]) => `${pid}:${ts}`)
                                             .join(",");
-                                          if (!gameState.systemMetadataExists) {
+                                          if (!(remoteState?.systemMetadataExists || gameState.systemMetadataExists)) {
                                             await addPlayerToSheet("System", "Metadata", "0000");
                                           }
                                           assignTargetInSheet("System", "Metadata", `START_${startTime}_LAST_${killTime}_DEATHS_${deathsStr}`);
                                         } catch (error) {
                                           console.error("Failed to sync GM force elimination to Google Sheets:", error);
+                                        } finally {
+                                          setIsLoading(false);
                                         }
                                       }
                                     }}

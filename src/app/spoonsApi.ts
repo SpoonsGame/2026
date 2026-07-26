@@ -319,6 +319,7 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
     if (p.isDead) {
       const ts = getEstimatedDeathTime(p.id);
       if (ts && ts !== Number.MAX_SAFE_INTEGER) {
+        deathTimesMap[p.id] = ts; // save estimated time to map for chart plotting
         p.killDate = new Date(ts).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",

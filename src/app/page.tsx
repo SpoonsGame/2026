@@ -1058,7 +1058,7 @@ export default function KillCamDashboard() {
 
       const killTime = Date.now();
       const updatedDeathTimes = {
-        ...(gameState.deathTimes || {}),
+        ...(remoteState.deathTimes || {}),
         [victimId]: killTime
       };
 
