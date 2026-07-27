@@ -802,7 +802,7 @@ export default function KillCamDashboard() {
   const analyticsData = useMemo(() => {
     const players = gameState.players;
     const startTime = gameState.gameStartTime;
-    const deathTimes = gameState.deathTimes || {};
+    const deathTimes = gameState.estimatedDeathTimes || {};
     
     const deadWithTimestamps = players
       .filter(p => p.isDead && deathTimes[p.id])
@@ -887,7 +887,7 @@ export default function KillCamDashboard() {
       endDateStr,
       totalDead: totalGameDead
     };
-  }, [gameState.players, gameState.gameStartTime, gameState.lastKillTime, gameState.deathTimes]);
+  }, [gameState.players, gameState.gameStartTime, gameState.lastKillTime, gameState.estimatedDeathTimes]);
 
   // Handle Camper Registration
   const handleSignUpSubmit = async (e: React.FormEvent) => {

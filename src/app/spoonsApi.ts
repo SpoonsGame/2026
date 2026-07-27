@@ -30,6 +30,7 @@ export interface GameState {
   gameStartTime?: number;
   lastKillTime?: number;
   deathTimes?: Record<string, number>;
+  estimatedDeathTimes?: Record<string, number>;
   systemMetadataExists?: boolean;
   deletedPlayerIds?: string[];
 }
@@ -302,16 +303,23 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
   // Remove System Metadata player and soft-deleted players from final list
   const filteredMappedPlayers = mappedPlayers.filter(p => p.name !== "System Metadata" && !deletedSet.has(p.id));
 
+  const estimatedDeathTimesMap: Record<string, number> = {};
+
   // Helper to recursively estimate death times for manual spreadsheet overrides
   const getEstimatedDeathTime = (playerId: string): number => {
     if (deathTimesMap[playerId]) return deathTimesMap[playerId];
+    if (estimatedDeathTimesMap[playerId]) return estimatedDeathTimesMap[playerId];
     const player = filteredMappedPlayers.find(p => p.id === playerId);
     if (!player || !player.isDead || !player.eliminatedBy) return Number.MAX_SAFE_INTEGER;
     const killer = filteredMappedPlayers.find(k => k.name === player.eliminatedBy);
     if (killer && killer.isDead) {
-      return getEstimatedDeathTime(killer.id) - 1;
+      const ts = getEstimatedDeathTime(killer.id) - 1;
+      estimatedDeathTimesMap[playerId] = ts;
+      return ts;
     }
-    return lastKillTime || gameStartTime || Date.now();
+    const ts = lastKillTime || gameStartTime || Date.now();
+    estimatedDeathTimesMap[playerId] = ts;
+    return ts;
   };
 
   // Assign killDate for each dead player using estimated/actual death time
@@ -319,7 +327,7 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
     if (p.isDead) {
       const ts = getEstimatedDeathTime(p.id);
       if (ts && ts !== Number.MAX_SAFE_INTEGER) {
-        deathTimesMap[p.id] = ts; // save estimated time to map for chart plotting
+        estimatedDeathTimesMap[p.id] = ts; // save estimated time for local client charting
         p.killDate = new Date(ts).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
@@ -360,6 +368,7 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
     gameStartTime,
     lastKillTime,
     deathTimes: deathTimesMap,
+    estimatedDeathTimes: estimatedDeathTimesMap,
     systemMetadataExists: !!systemPlayer,
     deletedPlayerIds
   };
