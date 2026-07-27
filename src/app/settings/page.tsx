@@ -898,6 +898,17 @@ export default function KillCamSettings() {
                                           const killerPin = hunter ? hunter.pin : "0000";
                                           eliminatePlayerInSheet(victim.pin, killerPin);
 
+                                          if (hunter) {
+                                            const targetId = victim.targetId === hunter.id ? null : victim.targetId;
+                                            const targetPlayer = targetId ? gameState.players.find(x => x.id === targetId) : null;
+                                            const targetName = targetPlayer ? targetPlayer.name : "None";
+
+                                            const hunterParts = hunter.name.split(" ");
+                                            const hunterFirst = hunterParts[0];
+                                            const hunterLast = hunterParts.slice(1).join(" ") || " ";
+                                            assignTargetInSheet(hunterFirst, hunterLast, targetName);
+                                          }
+
                                           const startTime = gameState.gameStartTime || (remoteState && remoteState.gameStartTime) || Date.now();
                                           const deathsStr = Object.entries(updatedDeathTimes)
                                             .map(([pid, ts]) => `${pid}:${ts}`)

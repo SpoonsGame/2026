@@ -901,6 +901,11 @@ export default function KillCamDashboard() {
       return;
     }
 
+    if (name.toLowerCase().includes("system") || name.toLowerCase().includes("metadata")) {
+      showToast("⚠️ Invalid name.");
+      return;
+    }
+
     const pin = Math.floor(1000 + Math.random() * 9000).toString();
     const newPlayer: Player = {
       id: Date.now().toString() + "-" + Math.random().toString(36).substr(2, 4),
