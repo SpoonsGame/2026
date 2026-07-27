@@ -685,6 +685,7 @@ export default function KillCamDashboard() {
                 gameStartTime: remoteState.gameStartTime,
                 lastKillTime: remoteState.lastKillTime,
                 deathTimes: remoteState.deathTimes,
+                estimatedDeathTimes: remoteState.estimatedDeathTimes,
                 systemMetadataExists: remoteState.systemMetadataExists,
                 deletedPlayerIds: remoteState.deletedPlayerIds
               };
