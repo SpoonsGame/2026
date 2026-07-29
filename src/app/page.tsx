@@ -1360,7 +1360,7 @@ export default function KillCamDashboard() {
               /* Signed out prompt */
               <div className="bg-[#16362a] border border-emerald-500/30 rounded-2xl p-4 text-center space-y-2">
                 <p className="text-xs text-emerald-300 font-bold uppercase tracking-wider">🔒 Want to Bet?</p>
-                <p className="text-[10px] text-slate-300 font-medium">Log in with your camper PIN code to place a single bet on the winner!</p>
+                <p className="text-[10px] text-slate-300 font-medium">Log in with your PIN code to place a single bet on the winner!</p>
                 <button
                   onClick={() => setIsSignInOpen(true)}
                   className="inline-block bg-[#1b3f31] border border-emerald-500/40 px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-emerald-800/40 transition-colors text-white"
