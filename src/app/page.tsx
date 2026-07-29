@@ -1504,7 +1504,7 @@ export default function KillCamDashboard() {
                       {campEmoji} {p.name}
                     </span>
                     <span className="text-[8px] text-[#2d6a4f] font-black uppercase mt-0.5 tracking-wider inline-flex items-center gap-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Active
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Alive
                     </span>
                   </div>
                 </div>
