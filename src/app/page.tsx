@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Users, Skull, Crown, BookOpen, Settings, RefreshCw, X, AlertTriangle, CheckCircle,
+  Users, Skull, Crown, BookOpen, Settings, RefreshCw, X, AlertTriangle, CheckCircle, Search,
   ChevronDown, ChevronRight, LogOut, ArrowRight, UserPlus, Flame, Target, Maximize2, Minimize2,
   ZoomIn, ZoomOut, Award, TrendingUp
 } from "lucide-react";
@@ -623,6 +623,7 @@ export default function KillCamDashboard() {
 
   const [isRulesExpanded, setIsRulesExpanded] = useState(false);
   const [firstSyncDone, setFirstSyncDone] = useState(false);
+  const [survivorSearchQuery, setSurvivorSearchQuery] = useState("");
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -756,6 +757,11 @@ export default function KillCamDashboard() {
 
   const alivePlayers = useMemo(() => gameState.players.filter(p => !p.isDead), [gameState.players]);
   const deadPlayers = useMemo(() => gameState.players.filter(p => p.isDead), [gameState.players]);
+  
+  const filteredSurvivors = useMemo(() => {
+    if (!survivorSearchQuery.trim()) return alivePlayers;
+    return alivePlayers.filter(p => p.name.toLowerCase().includes(survivorSearchQuery.toLowerCase()));
+  }, [alivePlayers, survivorSearchQuery]);
 
   const isGameOver = useMemo(() => firstSyncDone && gameState.gameStarted && alivePlayers.length === 1 && gameState.players.length >= 2, [gameState.players, alivePlayers, gameState.gameStarted, firstSyncDone]);
   const winner = useMemo(() => isGameOver ? alivePlayers[0] : null, [isGameOver, alivePlayers]);
@@ -1450,6 +1456,66 @@ export default function KillCamDashboard() {
     );
   };
 
+  const renderSurvivors = () => {
+    return (
+      <div className="bg-white border border-[#dce6e1] rounded-3xl p-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <h3 className="text-xs font-black text-[#1b4332] uppercase tracking-widest flex items-center gap-1.5">
+            <Users className="text-[#2d6a4f]" size={14} />
+            ACTIVE SURVIVORS ({alivePlayers.length})
+          </h3>
+          
+          {/* Smooth Search Bar */}
+          <div className="relative w-full sm:w-60">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
+            <input
+              type="text"
+              placeholder="Search survivors..."
+              value={survivorSearchQuery}
+              onChange={e => setSurvivorSearchQuery(e.target.value)}
+              className="w-full bg-[#faf9f5] border border-[#dce6e1] rounded-xl pl-9 pr-3.5 py-1.5 text-xs font-semibold placeholder:text-slate-400 focus:outline-none focus:border-[#1b4332] focus:bg-white transition-all shadow-2xs text-[#1b4332]"
+            />
+            {survivorSearchQuery && (
+              <button
+                onClick={() => setSurvivorSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {filteredSurvivors.length === 0 ? (
+          <p className="text-xs text-slate-400 font-semibold text-center py-4 bg-[#faf9f5] rounded-xl border border-dashed border-[#dce6e1]">
+            No matching survivors found.
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-60 overflow-y-auto pr-1">
+            {filteredSurvivors.map(p => {
+              const campEmoji = getCampEmoji(p.name);
+              return (
+                <div
+                  key={p.id}
+                  className="bg-[#f7faf8] border border-[#b2d8c3]/30 rounded-xl p-2.5 flex flex-col justify-between text-center relative overflow-hidden group hover:border-[#b2d8c3] transition-all duration-200"
+                >
+                  <div>
+                    <span className="text-xs font-black text-[#1b4332] tracking-wide block truncate">
+                      {campEmoji} {p.name}
+                    </span>
+                    <span className="text-[8px] text-[#2d6a4f] font-black uppercase mt-0.5 tracking-wider inline-flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Active
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderGraveyard = () => {
     if (deadPlayers.length === 0) return null;
     return (
@@ -1725,6 +1791,7 @@ export default function KillCamDashboard() {
               <div className="col-span-7 space-y-6">
                 {renderFlowChart()}
                 {renderLeaderboard()}
+                {renderSurvivors()}
                 {renderGraveyard()}
                 {renderRules()}
               </div>
@@ -1744,6 +1811,7 @@ export default function KillCamDashboard() {
               {renderFlowChart()}
               {renderLeaderboard()}
               {renderFeed()}
+              {renderSurvivors()}
               {renderGraveyard()}
               {renderRules()}
             </div>
