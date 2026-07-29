@@ -1302,7 +1302,7 @@ export default function KillCamDashboard() {
             <span className="text-base">🎰</span> Perhaps some betting?
           </h3>
           <span className="bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase">
-            {totalBets} Bets Placed
+            {totalBets} {totalBets === 1 ? "Bet Placed" : "Bets Placed"}
           </span>
         </div>
 
