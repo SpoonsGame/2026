@@ -34,6 +34,7 @@ export interface GameState {
   systemMetadataExists?: boolean;
   deletedPlayerIds?: string[];
   bets?: Record<string, string>;
+  todayOverride?: number;
 }
 
 export const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbxGS_5Zr0RZtBrd744l9ohEBdJE-fmJb4dtJnQlgEA1Xr5SG5VT6_kWKkeFkUWtJk34/exec";
@@ -275,6 +276,7 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
   const deathTimesMap: Record<string, number> = {};
   const deletedPlayerIds: string[] = [];
   const betsMap: Record<string, string> = {};
+  let todayOverride: number | undefined = undefined;
 
   if (systemPlayer) {
     const targetPin = (systemPlayer as any).targetPin || "";
@@ -306,6 +308,9 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
                 if (voter && candidate) betsMap[voter] = candidate;
               });
             }
+            if (key === "TODAY" && val) {
+              todayOverride = parseInt(val, 10);
+            }
           }
         });
       } else {
@@ -334,6 +339,9 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
                 betsMap[voter] = candidate;
               }
             });
+          }
+          if (parts[i] === "TODAY") {
+            todayOverride = parseInt(parts[i + 1], 10);
           }
         }
       }
@@ -413,7 +421,8 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
     estimatedDeathTimes: estimatedDeathTimesMap,
     systemMetadataExists: !!systemPlayer,
     deletedPlayerIds,
-    bets: betsMap
+    bets: betsMap,
+    todayOverride
   };
 };
 
@@ -427,7 +436,8 @@ export const serializeMetadata = (
   lastKill: number,
   deathTimes: Record<string, number>,
   bets: Record<string, string>,
-  deletedIds: string[]
+  deletedIds: string[],
+  todayOverride?: number
 ): string => {
   const deathsStr = Object.entries(deathTimes).map(([pid, ts]) => `${pid}:${ts}`).join(",");
   const betsStr = Object.entries(bets).map(([v, c]) => `${v}:${c}`).join(",");
@@ -435,6 +445,9 @@ export const serializeMetadata = (
   let str = `START:${startTime}|LAST:${lastKill}|DEATHS:${deathsStr}|BETS:${betsStr}`;
   if (deletedStr) {
     str += `|DELETED:${deletedStr}`;
+  }
+  if (todayOverride !== undefined && todayOverride !== null) {
+    str += `|TODAY:${todayOverride}`;
   }
   return str;
 };

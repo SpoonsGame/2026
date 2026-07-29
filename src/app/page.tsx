@@ -690,7 +690,8 @@ export default function KillCamDashboard() {
                 estimatedDeathTimes: remoteState.estimatedDeathTimes,
                 systemMetadataExists: remoteState.systemMetadataExists,
                 deletedPlayerIds: remoteState.deletedPlayerIds,
-                bets: remoteState.bets
+                bets: remoteState.bets,
+                todayOverride: remoteState.todayOverride
               };
               localStorage.setItem("spoons_local_gamestate_v8", JSON.stringify(merged));
               return merged;
@@ -804,11 +805,14 @@ export default function KillCamDashboard() {
   }, [isGameOver, winner]);
 
   const deadTodayCount = useMemo(() => {
+    if (gameState.todayOverride !== undefined && gameState.todayOverride !== null) {
+      return gameState.todayOverride;
+    }
     const todayStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
     return gameState.players.filter(p => 
-      p.isDead && p.killDate && (p.killDate.includes(todayStr) || p.killDate === "Recent")
+      p.isDead && p.killDate && p.killDate.includes(todayStr)
     ).length;
-  }, [gameState.players]);
+  }, [gameState.players, gameState.todayOverride]);
 
   const getTargetFor = useCallback((playerId: string) => {
     const player = gameState.players.find(p => p.id === playerId);

@@ -52,6 +52,15 @@ export default function KillCamSettings() {
   // Search filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [searchMode, setSearchMode] = useState<"name" | "all">("name");
+  const [todayOverrideInput, setTodayOverrideInput] = useState("");
+
+  useEffect(() => {
+    if (gameState.todayOverride !== undefined && gameState.todayOverride !== null) {
+      setTodayOverrideInput(gameState.todayOverride.toString());
+    } else {
+      setTodayOverrideInput("");
+    }
+  }, [gameState.todayOverride]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -95,7 +104,8 @@ export default function KillCamSettings() {
                 estimatedDeathTimes: remoteState.estimatedDeathTimes,
                 systemMetadataExists: remoteState.systemMetadataExists,
                 deletedPlayerIds: remoteState.deletedPlayerIds,
-                bets: remoteState.bets
+                bets: remoteState.bets,
+                todayOverride: remoteState.todayOverride
               };
               localStorage.setItem("spoons_local_gamestate_v8", JSON.stringify(merged));
               return merged;
@@ -162,9 +172,12 @@ export default function KillCamSettings() {
   }, [gameState.players, searchQuery, searchMode, getTargetFor]);
   
   const deadTodayCount = useMemo(() => {
+    if (gameState.todayOverride !== undefined && gameState.todayOverride !== null) {
+      return gameState.todayOverride;
+    }
     const todayStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
     return gameState.players.filter(p => p.isDead && p.killDate && p.killDate.includes(todayStr)).length;
-  }, [gameState.players]);
+  }, [gameState.players, gameState.todayOverride]);
 
   // Authenticate Admin
   const handleAdminAuth = async (e: React.FormEvent) => {
@@ -193,6 +206,54 @@ export default function KillCamSettings() {
       }
     } else {
       showToast("❌ Incorrect passcode.");
+    }
+  };
+
+  const handleUpdateTodayOverride = async () => {
+    setIsLoading(true);
+    try {
+      const remoteState = await fetchStateFromRemote();
+      if (!remoteState) {
+        showToast("⚠️ Could not reach database. Try again.");
+        setIsLoading(false);
+        return;
+      }
+
+      const val = todayOverrideInput.trim();
+      const overrideVal = val === "" ? undefined : parseInt(val, 10);
+      if (overrideVal !== undefined && isNaN(overrideVal)) {
+        showToast("⚠️ Please enter a valid number.");
+        setIsLoading(false);
+        return;
+      }
+
+      const updatedState = {
+        ...gameState,
+        todayOverride: overrideVal
+      };
+      setGameState(updatedState);
+
+      const startTime = gameState.gameStartTime || remoteState.gameStartTime || Date.now();
+      const lastKill = gameState.lastKillTime || remoteState.lastKillTime || Date.now();
+      const metaStr = serializeMetadata(
+        startTime,
+        lastKill,
+        remoteState.deathTimes || {},
+        remoteState.bets || {},
+        remoteState.deletedPlayerIds || [],
+        overrideVal
+      );
+
+      if (!(remoteState.systemMetadataExists || gameState.systemMetadataExists)) {
+        await addPlayerToSheet("System", "Metadata", "0000");
+      }
+      await assignTargetInSheet("System", "Metadata", metaStr);
+      showToast(overrideVal !== undefined ? `✅ "Spooned Today" count set to ${overrideVal}!` : `✅ "Spooned Today" override cleared!`);
+    } catch (error) {
+      console.error(error);
+      showToast("⚠️ Connection error. Try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -1026,6 +1087,38 @@ export default function KillCamSettings() {
                   >
                     Wipe Roster (Wipe All)
                   </button>
+                </div>
+              </div>
+
+              {/* STATS OVERRIDES */}
+              <div className="bg-white border border-[#dce6e1] rounded-3xl p-6 shadow-sm space-y-4">
+                <h4 className="text-xs font-black text-[#1b4332] uppercase tracking-widest">Stats Overrides</h4>
+                
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-[#1b4332] uppercase tracking-wider block">
+                      Spooned Today Override
+                    </label>
+                    <p className="text-[9px] text-slate-400">
+                      Manually set the "Spooned Today" card number, or leave empty to compute automatically.
+                    </p>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      placeholder="e.g. 1"
+                      value={todayOverrideInput}
+                      onChange={e => setTodayOverrideInput(e.target.value)}
+                      className="w-full bg-[#fdfbf7] border border-[#dce6e1] rounded-xl px-3 py-1.5 text-xs font-semibold text-[#1b4332] focus:outline-none focus:border-[#b2d8c3]"
+                    />
+                    <button
+                      onClick={handleUpdateTodayOverride}
+                      className="bg-[#1b4332] hover:bg-[#2d6a4f] text-white text-3xs font-black px-4 py-2 rounded-xl uppercase tracking-wider transition-colors shrink-0"
+                    >
+                      Save
+                    </button>
+                  </div>
                 </div>
               </div>
 
