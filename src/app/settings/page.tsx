@@ -6,7 +6,7 @@ import {
   Users, Skull, Settings, RefreshCcw, Plus, Trash2,
   X, Check, Lock, Unlock, ArrowLeft, Key, Shuffle, Search
 } from "lucide-react";
-import { Player, GameState, fetchStateFromRemote, addPlayerToSheet, eliminatePlayerInSheet, assignTargetInSheet } from "../spoonsApi";
+import { Player, GameState, fetchStateFromRemote, addPlayerToSheet, eliminatePlayerInSheet, assignTargetInSheet, serializeMetadata } from "../spoonsApi";
 import Link from "next/link";
 
 // --- Toast Component ---
@@ -911,13 +911,17 @@ export default function KillCamSettings() {
                                           }
 
                                           const startTime = gameState.gameStartTime || (remoteState && remoteState.gameStartTime) || Date.now();
-                                          const deathsStr = Object.entries(updatedDeathTimes)
-                                            .map(([pid, ts]) => `${pid}:${ts}`)
-                                            .join(",");
+                                          const metaStr = serializeMetadata(
+                                            startTime,
+                                            killTime,
+                                            updatedDeathTimes,
+                                            remoteState?.bets || {},
+                                            remoteState?.deletedPlayerIds || []
+                                          );
                                           if (!(remoteState?.systemMetadataExists || gameState.systemMetadataExists)) {
                                             await addPlayerToSheet("System", "Metadata", "0000");
                                           }
-                                          assignTargetInSheet("System", "Metadata", `START_${startTime}_LAST_${killTime}_DEATHS_${deathsStr}`);
+                                          await assignTargetInSheet("System", "Metadata", metaStr);
                                         } catch (error) {
                                           console.error("Failed to sync GM force elimination to Google Sheets:", error);
                                         } finally {

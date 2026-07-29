@@ -278,31 +278,63 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
 
   if (systemPlayer) {
     const targetPin = (systemPlayer as any).targetPin || "";
-    if (targetPin.startsWith("START_")) {
-      const parts = targetPin.split("_");
-      for (let i = 0; i < parts.length; i++) {
-        if (parts[i] === "START") gameStartTime = parseInt(parts[i + 1], 10);
-        if (parts[i] === "LAST") lastKillTime = parseInt(parts[i + 1], 10);
-        if (parts[i] === "DEATHS" && parts[i + 1]) {
-          parts[i + 1].split(",").forEach((pair: string) => {
-            const [pid, tsStr] = pair.split(":");
-            if (pid && tsStr) {
-              deathTimesMap[pid] = parseInt(tsStr, 10);
+    if (targetPin.startsWith("START_") || targetPin.startsWith("START:")) {
+      if (targetPin.includes("|")) {
+        // 1. New Pipe-separated Format
+        const sections = targetPin.split("|");
+        sections.forEach((sec: string) => {
+          const firstColon = sec.indexOf(":");
+          if (firstColon !== -1) {
+            const key = sec.substring(0, firstColon);
+            const val = sec.substring(firstColon + 1);
+            if (key === "START") gameStartTime = parseInt(val, 10);
+            if (key === "LAST") lastKillTime = parseInt(val, 10);
+            if (key === "DEATHS" && val) {
+              val.split(",").forEach((pair: string) => {
+                const [pid, tsStr] = pair.split(":");
+                if (pid && tsStr) deathTimesMap[pid] = parseInt(tsStr, 10);
+              });
             }
-          });
-        }
-        if (parts[i] === "DELETED" && parts[i + 1]) {
-          parts[i + 1].split(",").forEach((id: string) => {
-            if (id) deletedPlayerIds.push(id);
-          });
-        }
-        if (parts[i] === "BETS" && parts[i + 1]) {
-          parts[i + 1].split(",").forEach((pair: string) => {
-            const [voter, candidate] = pair.split(":");
-            if (voter && candidate) {
-              betsMap[voter] = candidate;
+            if (key === "DELETED" && val) {
+              val.split(",").forEach((id: string) => {
+                if (id) deletedPlayerIds.push(id);
+              });
             }
-          });
+            if (key === "BETS" && val) {
+              val.split(",").forEach((pair: string) => {
+                const [voter, candidate] = pair.split(":");
+                if (voter && candidate) betsMap[voter] = candidate;
+              });
+            }
+          }
+        });
+      } else {
+        // 2. Legacy Underscore-separated Format
+        const parts = targetPin.split("_");
+        for (let i = 0; i < parts.length; i++) {
+          if (parts[i] === "START") gameStartTime = parseInt(parts[i + 1], 10);
+          if (parts[i] === "LAST") lastKillTime = parseInt(parts[i + 1], 10);
+          if (parts[i] === "DEATHS" && parts[i + 1]) {
+            parts[i + 1].split(",").forEach((pair: string) => {
+              const [pid, tsStr] = pair.split(":");
+              if (pid && tsStr) {
+                deathTimesMap[pid] = parseInt(tsStr, 10);
+              }
+            });
+          }
+          if (parts[i] === "DELETED" && parts[i + 1]) {
+            parts[i + 1].split(",").forEach((id: string) => {
+              if (id) deletedPlayerIds.push(id);
+            });
+          }
+          if (parts[i] === "BETS" && parts[i + 1]) {
+            parts[i + 1].split(",").forEach((pair: string) => {
+              const [voter, candidate] = pair.split(":");
+              if (voter && candidate) {
+                betsMap[voter] = candidate;
+              }
+            });
+          }
         }
       }
     }
@@ -388,4 +420,21 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
 // 5. Keeps existing signatures happy, but handles saves on individual sheets API endpoints
 export const saveStateToRemote = async (roomId: string, writeKey: string, state: GameState): Promise<boolean> => {
   return true;
+};
+
+export const serializeMetadata = (
+  startTime: number,
+  lastKill: number,
+  deathTimes: Record<string, number>,
+  bets: Record<string, string>,
+  deletedIds: string[]
+): string => {
+  const deathsStr = Object.entries(deathTimes).map(([pid, ts]) => `${pid}:${ts}`).join(",");
+  const betsStr = Object.entries(bets).map(([v, c]) => `${v}:${c}`).join(",");
+  const deletedStr = deletedIds.join(",");
+  let str = `START:${startTime}|LAST:${lastKill}|DEATHS:${deathsStr}|BETS:${betsStr}`;
+  if (deletedStr) {
+    str += `|DELETED:${deletedStr}`;
+  }
+  return str;
 };

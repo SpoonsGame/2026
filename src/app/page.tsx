@@ -7,7 +7,7 @@ import {
   ChevronDown, ChevronRight, LogOut, ArrowRight, UserPlus, Flame, Target, Maximize2, Minimize2,
   ZoomIn, ZoomOut, Award, TrendingUp
 } from "lucide-react";
-import { Player, KillLogEntry, GameState, fetchStateFromRemote, addPlayerToSheet, eliminatePlayerInSheet, assignTargetInSheet } from "./spoonsApi";
+import { Player, KillLogEntry, GameState, fetchStateFromRemote, addPlayerToSheet, eliminatePlayerInSheet, assignTargetInSheet, serializeMetadata } from "./spoonsApi";
 import Link from "next/link";
 import confetti from "canvas-confetti";
 
@@ -1047,20 +1047,13 @@ export default function KillCamDashboard() {
       const startTime = gameState.gameStartTime || remoteState.gameStartTime || Date.now();
       const lastKill = gameState.lastKillTime || remoteState.lastKillTime || Date.now();
       
-      const deathsStr = Object.entries(remoteState.deathTimes || {})
-        .map(([pid, ts]) => `${pid}:${ts}`)
-        .join(",");
-        
-      const betsStr = Object.entries(updatedBets)
-        .map(([voter, candidate]) => `${voter}:${candidate}`)
-        .join(",");
-        
-      const deletedStr = (remoteState.deletedPlayerIds || []).join(",");
-
-      let metaStr = `START_${startTime}_LAST_${lastKill}_DEATHS_${deathsStr}_BETS_${betsStr}`;
-      if (deletedStr) {
-        metaStr += `_DELETED_${deletedStr}`;
-      }
+      const metaStr = serializeMetadata(
+        startTime,
+        lastKill,
+        remoteState.deathTimes || {},
+        updatedBets,
+        remoteState.deletedPlayerIds || []
+      );
 
       if (!(remoteState.systemMetadataExists || gameState.systemMetadataExists)) {
         await addPlayerToSheet("System", "Metadata", "0000");
@@ -1173,14 +1166,18 @@ export default function KillCamDashboard() {
         assignTargetInSheet(hunterFirst, hunterLast, targetName);
 
         // Update metadata with new kill time and death log
-        const startTime = gameState.gameStartTime || Date.now();
-        const deathsStr = Object.entries(updatedDeathTimes)
-          .map(([pid, ts]) => `${pid}:${ts}`)
-          .join(",");
-        if (!gameState.systemMetadataExists) {
+        const startTime = gameState.gameStartTime || remoteState.gameStartTime || Date.now();
+        const metaStr = serializeMetadata(
+          startTime,
+          killTime,
+          updatedDeathTimes,
+          remoteState.bets || {},
+          remoteState.deletedPlayerIds || []
+        );
+        if (!(remoteState.systemMetadataExists || gameState.systemMetadataExists)) {
           await addPlayerToSheet("System", "Metadata", "0000");
         }
-        assignTargetInSheet("System", "Metadata", `START_${startTime}_LAST_${killTime}_DEATHS_${deathsStr}`);
+        await assignTargetInSheet("System", "Metadata", metaStr);
       } catch (error) {
         console.error("Failed to sync self-reported elimination to Google Sheets:", error);
       }
@@ -1403,6 +1400,9 @@ export default function KillCamDashboard() {
                   </div>
                 ))}
               </div>
+              <p className="text-[9px] text-emerald-400/60 font-semibold text-center mt-2 italic">
+                * Odds scale dynamically as bets are placed. 15.0x indicates an underdog (no bets placed yet).
+              </p>
             </div>
           </div>
         ) : (
