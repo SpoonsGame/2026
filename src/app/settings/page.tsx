@@ -94,7 +94,8 @@ export default function KillCamSettings() {
                 deathTimes: remoteState.deathTimes,
                 estimatedDeathTimes: remoteState.estimatedDeathTimes,
                 systemMetadataExists: remoteState.systemMetadataExists,
-                deletedPlayerIds: remoteState.deletedPlayerIds
+                deletedPlayerIds: remoteState.deletedPlayerIds,
+                bets: remoteState.bets
               };
               localStorage.setItem("spoons_local_gamestate_v8", JSON.stringify(merged));
               return merged;

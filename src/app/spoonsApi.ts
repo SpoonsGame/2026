@@ -33,6 +33,7 @@ export interface GameState {
   estimatedDeathTimes?: Record<string, number>;
   systemMetadataExists?: boolean;
   deletedPlayerIds?: string[];
+  bets?: Record<string, string>;
 }
 
 export const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbxGS_5Zr0RZtBrd744l9ohEBdJE-fmJb4dtJnQlgEA1Xr5SG5VT6_kWKkeFkUWtJk34/exec";
@@ -273,6 +274,7 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
   let lastKillTime: number | undefined = undefined;
   const deathTimesMap: Record<string, number> = {};
   const deletedPlayerIds: string[] = [];
+  const betsMap: Record<string, string> = {};
 
   if (systemPlayer) {
     const targetPin = (systemPlayer as any).targetPin || "";
@@ -292,6 +294,14 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
         if (parts[i] === "DELETED" && parts[i + 1]) {
           parts[i + 1].split(",").forEach((id: string) => {
             if (id) deletedPlayerIds.push(id);
+          });
+        }
+        if (parts[i] === "BETS" && parts[i + 1]) {
+          parts[i + 1].split(",").forEach((pair: string) => {
+            const [voter, candidate] = pair.split(":");
+            if (voter && candidate) {
+              betsMap[voter] = candidate;
+            }
           });
         }
       }
@@ -370,7 +380,8 @@ export const fetchStateFromRemote = async (roomId: string = "default", writeKey?
     deathTimes: deathTimesMap,
     estimatedDeathTimes: estimatedDeathTimesMap,
     systemMetadataExists: !!systemPlayer,
-    deletedPlayerIds
+    deletedPlayerIds,
+    bets: betsMap
   };
 };
 

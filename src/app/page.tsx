@@ -624,6 +624,7 @@ export default function KillCamDashboard() {
   const [isRulesExpanded, setIsRulesExpanded] = useState(false);
   const [firstSyncDone, setFirstSyncDone] = useState(false);
   const [survivorSearchQuery, setSurvivorSearchQuery] = useState("");
+  const [selectedBetCandidateId, setSelectedBetCandidateId] = useState("");
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -688,7 +689,8 @@ export default function KillCamDashboard() {
                 deathTimes: remoteState.deathTimes,
                 estimatedDeathTimes: remoteState.estimatedDeathTimes,
                 systemMetadataExists: remoteState.systemMetadataExists,
-                deletedPlayerIds: remoteState.deletedPlayerIds
+                deletedPlayerIds: remoteState.deletedPlayerIds,
+                bets: remoteState.bets
               };
               localStorage.setItem("spoons_local_gamestate_v8", JSON.stringify(merged));
               return merged;
@@ -762,6 +764,14 @@ export default function KillCamDashboard() {
     if (!survivorSearchQuery.trim()) return alivePlayers;
     return alivePlayers.filter(p => p.name.toLowerCase().includes(survivorSearchQuery.toLowerCase()));
   }, [alivePlayers, survivorSearchQuery]);
+
+  const betCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    Object.values(gameState.bets || {}).forEach(candidateId => {
+      counts[candidateId] = (counts[candidateId] || 0) + 1;
+    });
+    return counts;
+  }, [gameState.bets]);
 
   const isGameOver = useMemo(() => firstSyncDone && gameState.gameStarted && alivePlayers.length === 1 && gameState.players.length >= 2, [gameState.players, alivePlayers, gameState.gameStarted, firstSyncDone]);
   const winner = useMemo(() => isGameOver ? alivePlayers[0] : null, [isGameOver, alivePlayers]);
@@ -1002,6 +1012,70 @@ export default function KillCamDashboard() {
     }
   };
 
+  // Camper Place Bet
+  const handlePlaceBet = async (candidateId: string) => {
+    if (!camperSession) return;
+    setIsLoading(true);
+    try {
+      const remoteState = await fetchStateFromRemote();
+      if (!remoteState) {
+        showToast("⚠️ Could not reach database. Try again.");
+        setIsLoading(false);
+        return;
+      }
+
+      const currentBets = remoteState.bets || {};
+      if (currentBets[camperSession.id]) {
+        showToast("⚠️ You have already placed a bet!");
+        setIsLoading(false);
+        return;
+      }
+
+      const updatedBets = {
+        ...currentBets,
+        [camperSession.id]: candidateId
+      };
+
+      // Update local state
+      const updatedState = {
+        ...gameState,
+        bets: updatedBets
+      };
+      setGameState(updatedState);
+
+      // Save back to Google Sheets metadata
+      const startTime = gameState.gameStartTime || remoteState.gameStartTime || Date.now();
+      const lastKill = gameState.lastKillTime || remoteState.lastKillTime || Date.now();
+      
+      const deathsStr = Object.entries(remoteState.deathTimes || {})
+        .map(([pid, ts]) => `${pid}:${ts}`)
+        .join(",");
+        
+      const betsStr = Object.entries(updatedBets)
+        .map(([voter, candidate]) => `${voter}:${candidate}`)
+        .join(",");
+        
+      const deletedStr = (remoteState.deletedPlayerIds || []).join(",");
+
+      let metaStr = `START_${startTime}_LAST_${lastKill}_DEATHS_${deathsStr}_BETS_${betsStr}`;
+      if (deletedStr) {
+        metaStr += `_DELETED_${deletedStr}`;
+      }
+
+      if (!(remoteState.systemMetadataExists || gameState.systemMetadataExists)) {
+        await addPlayerToSheet("System", "Metadata", "0000");
+      }
+      await assignTargetInSheet("System", "Metadata", metaStr);
+
+      showToast("🎟️ Bet successfully locked in!");
+    } catch (error) {
+      console.error("Failed to place bet:", error);
+      showToast("⚠️ Connection error. Try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Camper Sign Out
   const handleCamperSignOut = () => {
     setCamperSession(null);
@@ -1180,96 +1254,207 @@ export default function KillCamDashboard() {
     </div>
   );
 
-  const renderLethalAnalytics = () => (
-    <div className="bg-white border border-[#dce6e1] rounded-3xl p-6 shadow-sm space-y-4">
-      <div className="flex justify-between items-center border-b border-[#dce6e1]/40 pb-3">
-        <h3 className="text-xs font-black text-[#1b4332] tracking-widest flex items-center gap-1.5">
-          <TrendingUp className="text-[#2d6a4f]" size={14} />
-          Perhaps some stats?
-        </h3>
-      </div>
+  const renderLethalAnalytics = () => {
+    const totalBets = Object.keys(gameState.bets || {}).length;
+    const myBetId = camperSession ? (gameState.bets?.[camperSession.id]) : null;
+    const myBetPlayer = myBetId ? gameState.players.find(p => p.id === myBetId) : null;
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="bg-[#fdfbf7] border border-[#dce6e1] rounded-2xl p-3 text-center">
-          <p className="text-4xs text-slate-400 font-black uppercase tracking-wider">Avg Survival Time</p>
-          <h4 className="text-sm font-black text-[#1b4332] mt-1">{analyticsData.avgSurvivalStr}</h4>
+    const getOddsFor = (candidateId: string) => {
+      const total = Object.keys(gameState.bets || {}).length;
+      const votes = betCounts[candidateId] || 0;
+      if (total === 0) return "10.0x";
+      if (votes === 0) return "15.0x";
+      const multiplier = Math.round((total / votes) * 10) / 10;
+      return `${multiplier.toFixed(1)}x`;
+    };
+
+    // Get bet leaderboard: sort alive players by count of bets they have
+    const betLeaderboard = [...alivePlayers]
+      .map(p => {
+        const count = betCounts[p.id] || 0;
+        const percentage = totalBets > 0 ? Math.round((count / totalBets) * 100) : 0;
+        
+        // Dynamic Odds Multiplier Calculation
+        let odds = "10.0x";
+        if (totalBets > 0) {
+          if (count > 0) {
+            const mult = Math.round((totalBets / count) * 10) / 10;
+            odds = `${mult.toFixed(1)}x`;
+          } else {
+            odds = "15.0x";
+          }
+        }
+
+        return {
+          ...p,
+          count,
+          percentage,
+          odds
+        };
+      })
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+
+    return (
+      <div className="bg-[#11241d] border-2 border-emerald-500 rounded-3xl p-6 shadow-md text-[#e9f5ed] relative overflow-hidden space-y-4">
+        {/* Decorative background lights */}
+        <div className="absolute -top-12 -right-12 h-32 w-32 bg-emerald-500/20 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -bottom-12 -left-12 h-32 w-32 bg-yellow-500/10 rounded-full blur-2xl pointer-events-none" />
+
+        <div className="flex justify-between items-center border-b border-emerald-500/30 pb-3">
+          <h3 className="text-xs font-black tracking-widest flex items-center gap-1.5 uppercase text-yellow-400">
+            <span className="text-base">🎰</span> Perhaps some betting?
+          </h3>
+          <span className="bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase">
+            {totalBets} Bets Placed
+          </span>
         </div>
-        <div className="bg-[#fdfbf7] border border-[#dce6e1] rounded-2xl p-3 text-center">
-          <p className="text-4xs text-slate-400 font-black uppercase tracking-wider">Peak Spoon Hour</p>
-          <h4 className="text-sm font-black text-rose-700 mt-1">{analyticsData.dangerousHourStr}</h4>
-        </div>
-      </div>
 
-      {analyticsData.chartPoints.length > 1 && (
-        <div className="space-y-2">
-          <p className="text-4xs text-slate-400 font-black uppercase tracking-wider">Spoonings Progression</p>
-          <div className="relative bg-[#faf9f5] border border-[#dce6e1]/60 rounded-2xl p-3 overflow-hidden">
-            <svg viewBox="0 0 300 138" className="w-full h-auto overflow-visible">
-              <defs>
-                <linearGradient id="chartGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#ef4444" stopOpacity="0.2" />
-                  <stop offset="100%" stopColor="#ef4444" stopOpacity="0.0" />
-                </linearGradient>
-              </defs>
-              
-              {/* Grid lines */}
-              <line x1="25" y1="120" x2="295" y2="120" stroke="#dce6e1" strokeWidth="1" strokeDasharray="3 3" />
-              <line x1="25" y1="70" x2="295" y2="70" stroke="#dce6e1" strokeWidth="1" strokeDasharray="3 3" />
-              <line x1="25" y1="20" x2="295" y2="20" stroke="#dce6e1" strokeWidth="1" strokeDasharray="3 3" />
-              
-              {/* Vertical Tick lines */}
-              <line x1="25" y1="20" x2="25" y2="120" stroke="#dce6e1" strokeWidth="1" />
-              <line x1="160" y1="20" x2="160" y2="124" stroke="#dce6e1" strokeWidth="1" strokeDasharray="3 3" opacity="0.6" />
-              <line x1="295" y1="20" x2="295" y2="124" stroke="#dce6e1" strokeWidth="1" strokeDasharray="3 3" opacity="0.6" />
+        {/* 1. BET ACTIVE PHASE */}
+        {!isGameOver ? (
+          <div className="space-y-4">
+            {camperSession ? (
+              myBetPlayer ? (
+                /* Already voted state */
+                <div className="bg-emerald-950/40 border border-emerald-500/30 rounded-2xl p-4 text-center space-y-2">
+                  <div className="text-yellow-400 text-xl">🎟️</div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-emerald-300">Your Bet is Locked</h4>
+                  <p className="text-sm font-black text-white">
+                    {getCampEmoji(myBetPlayer.name)} {myBetPlayer.name}
+                  </p>
+                  <p className="text-[10px] text-slate-400 font-medium">
+                    Current Odds: <span className="text-yellow-400 font-bold">{getOddsFor(myBetPlayer.id)}</span>
+                  </p>
+                </div>
+              ) : (
+                /* Place bet state */
+                <div className="bg-[#16362a] border border-emerald-500/30 rounded-2xl p-4 space-y-3">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-emerald-300 text-center">Place Your Bet</h4>
+                  <div className="space-y-2">
+                    <select
+                      value={selectedBetCandidateId}
+                      onChange={e => setSelectedBetCandidateId(e.target.value)}
+                      className="w-full bg-[#1b3f31] border border-emerald-500/40 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-emerald-400 text-[#e9f5ed]"
+                    >
+                      <option value="">-- Choose a survivor --</option>
+                      {[...alivePlayers]
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map(p => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
+                        ))}
+                    </select>
 
-              {/* Y Axis Numbers (Spoonings Count Ladder) */}
-              <text x="5" y="23" fill="#94a3b8" fontSize="7.5" fontWeight="900">{analyticsData.totalDead}</text>
-              <text x="5" y="73" fill="#94a3b8" fontSize="7.5" fontWeight="900">{Math.round(analyticsData.totalDead / 2)}</text>
-              <text x="5" y="123" fill="#94a3b8" fontSize="7.5" fontWeight="900">0</text>
-              
-              {/* Fill under the path */}
-              <path
-                d={`${analyticsData.chartPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')} L ${analyticsData.chartPoints[analyticsData.chartPoints.length - 1].x} 120 L 25 120 Z`}
-                fill="url(#chartGrad)"
-              />
-              
-              {/* Path line */}
-              <path
-                d={analyticsData.chartPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')}
-                fill="none"
-                stroke="#ef4444"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              
-              {/* Pulsing indicator on last point */}
-              {(() => {
-                const lp = analyticsData.chartPoints[analyticsData.chartPoints.length - 1];
-                return (
-                  <g>
-                    <circle cx={lp.x} cy={lp.y} r="6" fill="#ef4444" opacity="0.3" className="animate-pulse" />
-                    <circle cx={lp.x} cy={lp.y} r="3.5" fill="#ef4444" />
-                  </g>
-                );
-              })()}
+                    <button
+                      onClick={() => {
+                        if (selectedBetCandidateId) {
+                          handlePlaceBet(selectedBetCandidateId);
+                        }
+                      }}
+                      disabled={!selectedBetCandidateId}
+                      className="w-full bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-[#11241d] font-black text-xs py-2 rounded-xl uppercase tracking-wider shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Lock In Bet 🎰
+                    </button>
+                  </div>
+                </div>
+              )
+            ) : (
+              /* Signed out prompt */
+              <div className="bg-[#16362a] border border-emerald-500/30 rounded-2xl p-4 text-center space-y-2">
+                <p className="text-xs text-emerald-300 font-bold uppercase tracking-wider">🔒 Want to Bet?</p>
+                <p className="text-[10px] text-slate-300 font-medium">Log in with your camper PIN code to place a single bet on the winner!</p>
+                <button
+                  onClick={() => setIsSignInOpen(true)}
+                  className="inline-block bg-[#1b3f31] border border-emerald-500/40 px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-emerald-800/40 transition-colors text-white"
+                >
+                  🔑 Sign In
+                </button>
+              </div>
+            )}
 
-              {/* X Axis Dates (Timeline Ladder) */}
-              <text x="25" y="134" fill="#94a3b8" fontSize="7.5" fontWeight="900" textAnchor="start">{analyticsData.startDateStr}</text>
-              <text x="160" y="134" fill="#94a3b8" fontSize="7.5" fontWeight="900" textAnchor="middle">{analyticsData.midDateStr}</text>
-              <text x="295" y="134" fill="#94a3b8" fontSize="7.5" fontWeight="900" textAnchor="end">{analyticsData.endDateStr}</text>
-            </svg>
-            <div className="flex justify-between items-center text-[8px] text-slate-400 font-bold uppercase mt-1.5 px-0.5 border-t border-[#dce6e1]/40 pt-2">
-              <span>{gameState.players.filter(p => !p.isDead).length} Survivors Left</span>
-              <span className="bg-rose-50 border border-rose-200 text-rose-600 px-2 py-0.5 rounded-full font-black normal-case scale-95">
-                🔥 {gameState.players.length > 0 ? Math.round((gameState.players.filter(p => p.isDead).length / gameState.players.length) * 100) : 0}% Spooned (Progress)
-              </span>
+            {/* Odds Table */}
+            <div className="space-y-2">
+              <p className="text-[10px] text-emerald-300 font-black uppercase tracking-widest">Odds & Betting Slip Roster</p>
+              <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                {betLeaderboard.map((item, index) => (
+                  <div
+                    key={item.id}
+                    className="bg-[#1b3f31]/60 border border-emerald-500/20 rounded-xl p-2.5 flex items-center justify-between text-xs transition-all hover:bg-[#1b3f31]/80"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-[10px] font-black text-emerald-400 w-4">{index + 1}</span>
+                      <div className="truncate">
+                        <p className="font-black text-white truncate">{getCampEmoji(item.name)} {item.name}</p>
+                        <p className="text-[8px] text-slate-400 font-medium">
+                          {item.count} {item.count === 1 ? 'bet' : 'bets'} ({item.percentage}%)
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <div className="hidden sm:block w-16 bg-emerald-950 rounded-full h-1 overflow-hidden">
+                        <div className="bg-emerald-400 h-full" style={{ width: `${item.percentage}%` }} />
+                      </div>
+                      <span className="bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 font-black text-[9px] px-2 py-0.5 rounded-md min-w-12 text-center uppercase tracking-wide">
+                        {item.odds}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
-  );
+        ) : (
+          /* 2. GAME OVER PHASE - SHOW WINNERS */
+          winner && (
+            <div className="space-y-4">
+              <div className="bg-[#16362a] border border-emerald-500/30 rounded-2xl p-4 text-center space-y-2">
+                <span className="text-2xl">🏆</span>
+                <h4 className="text-xs font-black uppercase tracking-wider text-yellow-400">Betting Results Locked</h4>
+                <p className="text-sm font-black text-white">
+                  Champion: {getCampEmoji(winner.name)} {winner.name}
+                </p>
+              </div>
+
+              {(() => {
+                const correctVoters = Object.entries(gameState.bets || {})
+                  .filter(([_, candidateId]) => candidateId === winner.id)
+                  .map(([voterId]) => {
+                    const voter = gameState.players.find(p => p.id === voterId);
+                    return voter ? voter.name : "Unknown Camper";
+                  });
+
+                return (
+                  <div className="bg-[#1b3f31]/60 border border-emerald-500/20 rounded-xl p-4 space-y-3">
+                    <h5 className="text-[10px] font-black uppercase text-yellow-400 tracking-wider flex items-center gap-1">
+                      👑 Vegas Wizards ({correctVoters.length})
+                    </h5>
+                    {correctVoters.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {correctVoters.map(vName => (
+                          <span
+                            key={vName}
+                            className="bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 px-2 py-1 rounded-lg text-[10px] font-bold"
+                          >
+                            🔮 {vName}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-slate-400 font-medium italic">
+                        No campers predicted this outcome! The house wins. 🎰
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          )
+        )}
+      </div>
+    );
+  };
 
   const renderDossier = () => (
     <div className="bg-white border border-[#dce6e1] rounded-3xl p-6 shadow-sm relative overflow-hidden">
