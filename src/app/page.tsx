@@ -1462,7 +1462,7 @@ export default function KillCamDashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <h3 className="text-xs font-black text-[#1b4332] uppercase tracking-widest flex items-center gap-1.5">
             <Users className="text-[#2d6a4f]" size={14} />
-            ACTIVE SURVIVORS ({alivePlayers.length})
+            SURVIVORS ({alivePlayers.length})
           </h3>
           
           {/* Smooth Search Bar */}
