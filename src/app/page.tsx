@@ -1024,6 +1024,12 @@ export default function KillCamDashboard() {
         return;
       }
 
+      if (candidateId === camperSession.id) {
+        showToast("⚠️ You cannot bet on yourself!");
+        setIsLoading(false);
+        return;
+      }
+
       const currentBets = remoteState.bets || {};
       if (currentBets[camperSession.id]) {
         showToast("⚠️ You have already placed a bet!");
@@ -1334,6 +1340,7 @@ export default function KillCamDashboard() {
                     >
                       <option value="">-- Choose a survivor --</option>
                       {[...alivePlayers]
+                        .filter(p => p.id !== camperSession.id)
                         .sort((a, b) => a.name.localeCompare(b.name))
                         .map(p => (
                           <option key={p.id} value={p.id}>
