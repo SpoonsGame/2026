@@ -1341,6 +1341,12 @@ export default function KillCamDashboard() {
           </span>
         </div>
 
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-3 text-center">
+          <p className="text-[10px] text-yellow-400 font-extrabold uppercase tracking-wider flex items-center justify-center gap-1">
+            🥤 Correct guesses win a free drink! 🥤
+          </p>
+        </div>
+
         {/* 1. BET ACTIVE PHASE */}
         {!isGameOver ? (
           <div className="space-y-4">
