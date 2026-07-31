@@ -53,6 +53,8 @@ export default function KillCamSettings() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchMode, setSearchMode] = useState<"name" | "all">("name");
   const [todayOverrideInput, setTodayOverrideInput] = useState("");
+  const [ffaEliminationVictim, setFfaEliminationVictim] = useState<Player | null>(null);
+  const [ffaSelectedKillerId, setFfaSelectedKillerId] = useState("");
 
   useEffect(() => {
     if (gameState.todayOverride !== undefined && gameState.todayOverride !== null) {
@@ -179,6 +181,8 @@ export default function KillCamSettings() {
     return gameState.players.filter(p => p.isDead && p.killDate && p.killDate.includes(todayStr)).length;
   }, [gameState.players, gameState.todayOverride]);
 
+  const isFreeForAll = useMemo(() => gameState.gameStarted && alivePlayers.length <= 10, [gameState.gameStarted, alivePlayers]);
+
   // Authenticate Admin
   const handleAdminAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -252,6 +256,83 @@ export default function KillCamSettings() {
     } catch (error) {
       console.error(error);
       showToast("⚠️ Connection error. Try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFfaSpoilKillConfirm = async () => {
+    if (!ffaEliminationVictim) return;
+    if (!ffaSelectedKillerId) {
+      showToast("⚠️ Please select who got the spooning.");
+      return;
+    }
+
+    const victim = ffaEliminationVictim;
+    const killer = gameState.players.find(p => p.id === ffaSelectedKillerId);
+    if (!killer) {
+      showToast("⚠️ Killer not found.");
+      return;
+    }
+
+    setIsLoading(true);
+    setFfaEliminationVictim(null); // Close modal
+
+    const killTime = Date.now();
+    let remoteState = null;
+    try {
+      remoteState = await fetchStateFromRemote();
+    } catch (e) {
+      console.error(e);
+    }
+
+    const activeDeathTimes = (remoteState && remoteState.deathTimes) || gameState.deathTimes || {};
+    const updatedDeathTimes = {
+      ...activeDeathTimes,
+      [victim.id]: killTime
+    };
+
+    const updatedPlayers = gameState.players.map(x => {
+      if (x.id === victim.id) {
+        return { 
+          ...x, 
+          isDead: true, 
+          eliminatedBy: killer.name, 
+          killDate: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }), 
+          deathReason: "Eliminated in the hunt" 
+        };
+      }
+      return x;
+    });
+
+    commitState({
+      ...gameState,
+      players: updatedPlayers,
+      lastKillTime: killTime,
+      deathTimes: updatedDeathTimes
+    });
+    showToast(`💀 Force-eliminated ${victim.name}`);
+
+    // Sync to Sheets
+    try {
+      eliminatePlayerInSheet(victim.pin, killer.pin);
+
+      const startTime = gameState.gameStartTime || (remoteState && remoteState.gameStartTime) || Date.now();
+      const metaStr = serializeMetadata(
+        startTime,
+        killTime,
+        updatedDeathTimes,
+        (remoteState && remoteState.bets) || gameState.bets || {},
+        (remoteState && remoteState.deletedPlayerIds) || gameState.deletedPlayerIds || [],
+        (remoteState && remoteState.todayOverride) || gameState.todayOverride
+      );
+
+      if (!(remoteState?.systemMetadataExists || gameState.systemMetadataExists)) {
+        await addPlayerToSheet("System", "Metadata", "0000");
+      }
+      await assignTargetInSheet("System", "Metadata", metaStr);
+    } catch (error) {
+      console.error("Failed to sync GM FFA force elimination to Sheets:", error);
     } finally {
       setIsLoading(false);
     }
@@ -921,6 +1002,11 @@ export default function KillCamSettings() {
                                 ) : (
                                   <button
                                     onClick={async () => {
+                                      if (isFreeForAll) {
+                                        setFfaSelectedKillerId("");
+                                        setFfaEliminationVictim(p);
+                                        return;
+                                      }
                                       if (window.confirm(`Force eliminate ${p.name}?`)) {
                                         setIsLoading(true);
                                         const killTime = Date.now();
@@ -1155,6 +1241,70 @@ export default function KillCamSettings() {
         )}
 
       </main>
+
+      {/* FFA ELIMINATION KILLER SELECT MODAL */}
+      <AnimatePresence>
+        {ffaEliminationVictim && (
+          <div className="fixed inset-0 bg-[#1c2826]/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="bg-white border border-[#dce6e1] rounded-3xl max-w-sm w-full p-6 shadow-xl space-y-4"
+            >
+              <div className="flex justify-between items-center border-b border-[#dce6e1]/40 pb-2">
+                <h4 className="font-black text-[#1b4332] text-sm uppercase">⚔️ Spoil Kill (Free-For-All)</h4>
+                <button onClick={() => setFfaEliminationVictim(null)} className="text-slate-400 hover:text-slate-600">
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <p className="text-[10px] text-slate-500">
+                  You are force-eliminating <strong className="text-slate-700">{ffaEliminationVictim.name}</strong>. Choose who gets credit for the spooning:
+                </p>
+
+                <div className="space-y-1">
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">
+                    Choose Killer
+                  </label>
+                  <select
+                    value={ffaSelectedKillerId}
+                    onChange={(e) => setFfaSelectedKillerId(e.target.value)}
+                    className="w-full bg-[#fdfbf7] border border-[#dce6e1] rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-emerald-500 text-slate-800"
+                  >
+                    <option value="">-- Choose killer --</option>
+                    {alivePlayers
+                      .filter(p => p.id !== ffaEliminationVictim.id)
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={() => setFfaEliminationVictim(null)}
+                    className="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-2xs py-2.5 rounded-xl uppercase tracking-wider"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleFfaSpoilKillConfirm}
+                    disabled={!ffaSelectedKillerId || isLoading}
+                    className="w-1/2 bg-[#1b4332] hover:bg-[#2d6a4f] text-white font-black text-2xs py-2.5 rounded-xl uppercase tracking-wider transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Confirm Spoon
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* TOAST PANEL */}
       <AnimatePresence>

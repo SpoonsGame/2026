@@ -620,6 +620,7 @@ export default function KillCamDashboard() {
 
   // Camper Self-Report Death Modal States
   const [isReportDeathOpen, setIsReportDeathOpen] = useState(false);
+  const [selectedKillerId, setSelectedKillerId] = useState("");
 
   const [isRulesExpanded, setIsRulesExpanded] = useState(false);
   const [firstSyncDone, setFirstSyncDone] = useState(false);
@@ -759,6 +760,7 @@ export default function KillCamDashboard() {
   };
 
   const alivePlayers = useMemo(() => gameState.players.filter(p => !p.isDead), [gameState.players]);
+  const isFreeForAll = useMemo(() => gameState.gameStarted && alivePlayers.length <= 10, [gameState.gameStarted, alivePlayers]);
   const deadPlayers = useMemo(() => gameState.players.filter(p => p.isDead), [gameState.players]);
   
   const filteredSurvivors = useMemo(() => {
@@ -1107,11 +1109,26 @@ export default function KillCamDashboard() {
         return;
       }
 
-      const hunter = remoteState.players.find(p => p.targetId === victimId && !p.isDead);
-      if (!hunter) {
-        showToast("⚠️ Could not find your active hunter. Contact Jonah.");
-        setIsLoading(false);
-        return;
+      let hunter: Player | undefined = undefined;
+      if (isFreeForAll) {
+        if (!selectedKillerId) {
+          showToast("⚠️ Please select who spooned you.");
+          setIsLoading(false);
+          return;
+        }
+        hunter = remoteState.players.find(p => p.id === selectedKillerId);
+        if (!hunter) {
+          showToast("⚠️ Selected killer not found.");
+          setIsLoading(false);
+          return;
+        }
+      } else {
+        hunter = remoteState.players.find(p => p.targetId === victimId && !p.isDead);
+        if (!hunter) {
+          showToast("⚠️ Could not find your active hunter. Contact Jonah.");
+          setIsLoading(false);
+          return;
+        }
       }
 
       const killDate = new Date().toLocaleDateString("en-US", {
@@ -1132,6 +1149,12 @@ export default function KillCamDashboard() {
             killDate,
             deathReason: reason,
             eliminatedBy: killerName
+          };
+        }
+        if (!isFreeForAll && hunter && p.id === hunter.id) {
+          return {
+            ...p,
+            targetId: victim.targetId === hunter.id ? null : victim.targetId
           };
         }
         return p;
@@ -1165,15 +1188,17 @@ export default function KillCamDashboard() {
       try {
         eliminatePlayerInSheet(victim.pin, hunter.pin);
 
-        // Update target assignment for the hunter in Google Sheets
-        const targetId = victim.targetId === hunter.id ? null : victim.targetId;
-        const targetPlayer = targetId ? remoteState.players.find(p => p.id === targetId) : null;
-        const targetName = targetPlayer ? targetPlayer.name : "None";
+        if (!isFreeForAll) {
+          // Update target assignment for the hunter in Google Sheets
+          const targetId = victim.targetId === hunter.id ? null : victim.targetId;
+          const targetPlayer = targetId ? remoteState.players.find(p => p.id === targetId) : null;
+          const targetName = targetPlayer ? targetPlayer.name : "None";
 
-        const hunterParts = hunter.name.split(" ");
-        const hunterFirst = hunterParts[0];
-        const hunterLast = hunterParts.slice(1).join(" ") || " ";
-        assignTargetInSheet(hunterFirst, hunterLast, targetName);
+          const hunterParts = hunter.name.split(" ");
+          const hunterFirst = hunterParts[0];
+          const hunterLast = hunterParts.slice(1).join(" ") || " ";
+          assignTargetInSheet(hunterFirst, hunterLast, targetName);
+        }
 
         // Update metadata with new kill time and death log
         const startTime = gameState.gameStartTime || remoteState.gameStartTime || Date.now();
@@ -1490,17 +1515,43 @@ export default function KillCamDashboard() {
 
           {!camperSession.isDead ? (
             <div className="space-y-4">
-              {/* SECRET TARGET DISPLAY */}
-              <div className="bg-[#e9f5ed] border border-[#b2d8c3] rounded-2xl p-4 text-center space-y-1">
-                <p className="text-[9px] text-[#2d6a4f] font-black uppercase tracking-widest">🎯 Your Secret Target</p>
-                <h4 className="text-lg font-black text-[#1b4332]">
-                  {getTargetFor(camperSession.id)?.name || "Winner (No Targets Left)"}
-                </h4>
-                <p className="text-[9px] text-slate-500 italic">Do not show this to anyone!</p>
-              </div>
+              {/* SECRET TARGET DISPLAY OR FREE-FOR-ALL */}
+              {isFreeForAll ? (
+                <div className="bg-gradient-to-br from-rose-950/80 to-[#1b4332] border-2 border-rose-500 rounded-2xl p-4 space-y-3 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 bg-rose-500 text-white font-black text-[8px] px-2 py-0.5 uppercase tracking-wider rounded-bl-lg">
+                    Free-for-All
+                  </div>
+                  <div className="text-center space-y-1">
+                    <p className="text-[10px] text-rose-350 font-black uppercase tracking-widest animate-pulse">⚔️ Hunt is unrestricted</p>
+                    <h4 className="text-sm font-black text-white uppercase">Eliminate Any Survivor!</h4>
+                    <p className="text-[8.5px] text-slate-350 italic">With 10 or fewer players remaining, you can spoon anyone on this list:</p>
+                  </div>
+                  
+                  <div className="bg-emerald-950/50 rounded-xl p-2 border border-emerald-800/40 max-h-40 overflow-y-auto space-y-1">
+                    {alivePlayers
+                      .filter(p => p.id !== camperSession.id)
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map(p => (
+                        <div key={p.id} className="text-xs font-bold text-emerald-200 flex items-center justify-between px-2 py-1 hover:bg-emerald-900/40 rounded-lg">
+                          <span>{getCampEmoji(p.name)} {p.name}</span>
+                          <span className="text-[8px] bg-emerald-500/20 text-emerald-350 border border-emerald-500/30 px-1.5 py-0.5 rounded uppercase font-black">Alive</span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-[#e9f5ed] border border-[#b2d8c3] rounded-2xl p-4 text-center space-y-1">
+                  <p className="text-[9px] text-[#2d6a4f] font-black uppercase tracking-widest">🎯 Your Secret Target</p>
+                  <h4 className="text-lg font-black text-[#1b4332]">
+                    {getTargetFor(camperSession.id)?.name || "Winner (No Targets Left)"}
+                  </h4>
+                  <p className="text-[9px] text-slate-500 italic">Do not show this to anyone!</p>
+                </div>
+              )}
 
               <button
                 onClick={() => {
+                  setSelectedKillerId("");
                   setIsReportDeathOpen(true);
                 }}
                 className="w-full bg-rose-600 hover:bg-rose-700 text-white font-black py-3 rounded-xl text-xs uppercase tracking-wider transition-all shadow-sm"
@@ -2197,9 +2248,41 @@ export default function KillCamDashboard() {
               </div>
 
               <form onSubmit={handleReportDeathSubmit} className="space-y-4">
-                <p className="text-[10px] text-slate-500">
-                  Confirm your elimination. Since target loops are tracked, your active hunter is automatically set as your killer.
-                </p>
+                {isFreeForAll ? (
+                  <div className="space-y-3">
+                    <p className="text-[10px] text-rose-600 font-bold uppercase tracking-wider">
+                      ⚔️ Free-For-All Active
+                    </p>
+                    <p className="text-[10px] text-slate-500">
+                      With 10 or fewer players remaining, there are no fixed targets. Choose who spooned you:
+                    </p>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">
+                        Select Killer
+                      </label>
+                      <select
+                        value={selectedKillerId}
+                        onChange={(e) => setSelectedKillerId(e.target.value)}
+                        required
+                        className="w-full bg-[#fdfbf7] border border-[#dce6e1] rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-emerald-500 text-slate-800"
+                      >
+                        <option value="">-- Choose your killer --</option>
+                        {alivePlayers
+                          .filter(p => p.id !== camperSession.id)
+                          .sort((a, b) => a.name.localeCompare(b.name))
+                          .map(p => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-500">
+                    Confirm your elimination. Since target loops are tracked, your active hunter is automatically set as your killer.
+                  </p>
+                )}
 
 
                 <div className="flex gap-2">
