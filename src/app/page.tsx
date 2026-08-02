@@ -1916,7 +1916,7 @@ export default function KillCamDashboard() {
               <h3 className="text-xs font-black text-[#1b4332] uppercase tracking-widest flex items-center justify-center gap-1.5">
                 <Crown size={14} className="text-yellow-500" /> Survival Hall of Fame
               </h3>
-              <p className="text-[9px] text-slate-400 mt-0.5">The final three campers standing in the hunt</p>
+              <p className="text-[9px] text-slate-400 mt-0.5">The final three players standing in the hunt</p>
             </div>
 
             <div className="flex items-end justify-center gap-3 pt-8 pb-2">
@@ -1963,9 +1963,9 @@ export default function KillCamDashboard() {
           <div className="bg-white border border-[#dce6e1] rounded-3xl p-6 shadow-sm flex flex-col justify-between">
             <div className="text-center pb-4 border-b border-[#dce6e1]/40">
               <h3 className="text-xs font-black text-[#1b4332] uppercase tracking-widest flex items-center justify-center gap-1.5">
-                <Skull size={14} className="text-rose-500" /> Kill Master Leaderboard
+                <Skull size={14} className="text-rose-500" /> Kills Leaderboard
               </h3>
-              <p className="text-[9px] text-slate-400 mt-0.5">Campers with the most registered spoonings</p>
+              <p className="text-[9px] text-slate-400 mt-0.5">Players with the most registered spoonings</p>
             </div>
 
             <div className="flex items-end justify-center gap-3 pt-8 pb-2">
@@ -2038,9 +2038,9 @@ export default function KillCamDashboard() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#dce6e1]/40 pb-2">
             <div>
               <h4 className="text-xs font-black text-[#1b4332] uppercase tracking-widest">
-                🔍 Camper Profile Lookup
+                🔍 Player Profile Lookup
               </h4>
-              <p className="text-[9px] text-slate-400 mt-0.5">Select a camper to view their personal performance summary</p>
+              <p className="text-[9px] text-slate-400 mt-0.5">Select a player to view their personal performance summary</p>
             </div>
 
             <select
@@ -2048,7 +2048,7 @@ export default function KillCamDashboard() {
               onChange={e => setLookupPlayerId(e.target.value)}
               className="bg-[#faf9f5] border border-[#dce6e1] rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#1b4332] text-[#1b4332]"
             >
-              <option value="">-- Choose Camper --</option>
+              <option value="">-- Choose Player --</option>
               {[...gameState.players]
                 .sort((a, b) => a.name.localeCompare(b.name))
                 .map(p => (
