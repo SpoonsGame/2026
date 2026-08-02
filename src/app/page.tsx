@@ -20,7 +20,6 @@ const getCampEmoji = (name: string): string => {
   }
   return CAMP_EMOJIS[Math.abs(hash) % CAMP_EMOJIS.length];
 };
-
 // --- Toast Component ---
 const Toast = ({ message }: { message: string }) => (
   <motion.div
@@ -626,6 +625,7 @@ export default function KillCamDashboard() {
   const [firstSyncDone, setFirstSyncDone] = useState(false);
   const [survivorSearchQuery, setSurvivorSearchQuery] = useState("");
   const [selectedBetCandidateId, setSelectedBetCandidateId] = useState("");
+  const [lookupPlayerId, setLookupPlayerId] = useState("");
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -1802,6 +1802,402 @@ export default function KillCamDashboard() {
     );
   };
 
+  const renderGameOverRecap = () => {
+    const deadSorted = [...gameState.players]
+      .filter(p => p.isDead)
+      .sort((a, b) => {
+        const timeA = gameState.deathTimes?.[a.id] || 0;
+        const timeB = gameState.deathTimes?.[b.id] || 0;
+        return timeB - timeA;
+      });
+    const aliveSorted = [...gameState.players]
+      .filter(p => !p.isDead)
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const survivalRoster = [...aliveSorted, ...deadSorted];
+
+    const champ = survivalRoster[0];
+    const secondPlace = survivalRoster[1];
+    const thirdPlace = survivalRoster[2];
+
+    const killCounts: Record<string, number> = {};
+    gameState.players.forEach(p => {
+      killCounts[p.name.toLowerCase().trim()] = 0;
+    });
+    gameState.killLog.forEach(log => {
+      const killer = log.killerName.toLowerCase().trim();
+      killCounts[killer] = (killCounts[killer] || 0) + 1;
+    });
+    const killMastersRoster = [...gameState.players]
+      .map(p => ({
+        ...p,
+        kills: killCounts[p.name.toLowerCase().trim()] || 0
+      }))
+      .sort((a, b) => b.kills - a.kills || a.name.localeCompare(b.name));
+
+    const killChamp = killMastersRoster[0];
+    const killSecond = killMastersRoster[1];
+    const killThird = killMastersRoster[2];
+
+    const dayCounts: Record<string, number> = {};
+    gameState.killLog.forEach(log => {
+      const dayStr = log.date.split(",")[0].trim();
+      if (dayStr) {
+        dayCounts[dayStr] = (dayCounts[dayStr] || 0) + 1;
+      }
+    });
+    let maxDay = "None";
+    let maxKills = 0;
+    Object.entries(dayCounts).forEach(([day, count]) => {
+      if (count > maxKills) {
+        maxKills = count;
+        maxDay = day;
+      }
+    });
+
+    const lookupPlayer = lookupPlayerId ? gameState.players.find(p => p.id === lookupPlayerId) : null;
+    const lookupPlayerRank = lookupPlayer ? survivalRoster.findIndex(p => p.id === lookupPlayer.id) + 1 : 0;
+    const lookupPlayerKills = lookupPlayer ? (killCounts[lookupPlayer.name.toLowerCase().trim()] || 0) : 0;
+    const lookupPlayerVictims = lookupPlayer
+      ? gameState.killLog
+          .filter(log => log.killerName.toLowerCase().trim() === lookupPlayer.name.toLowerCase().trim())
+          .map(log => log.victimName)
+      : [];
+
+    const lookupPlayerBet = lookupPlayer ? (gameState.bets?.[lookupPlayer.id]) : null;
+    const lookupPlayerBetPlayer = lookupPlayerBet ? gameState.players.find(p => p.id === lookupPlayerBet) : null;
+    const isLookupBetCorrect = lookupPlayerBetPlayer && champ && lookupPlayerBetPlayer.id === champ.id;
+
+    const totalBets = Object.keys(gameState.bets || {}).length;
+
+    const trees = buildLineageTrees(gameState.players, gameState.killLog);
+    const layoutNodes = computeVerticalForestLayout(trees);
+    const connectionPaths: any[] = [];
+    layoutNodes.forEach(node => {
+      if (node.parentId) {
+        const parent = layoutNodes.find(n => n.id === node.parentId);
+        if (parent) {
+          connectionPaths.push({
+            from: { x: parent.x, y: parent.y, name: parent.name },
+            to: { x: node.x, y: node.y, name: node.name },
+            key: `path-${parent.id}-${node.id}`
+          });
+        }
+      }
+    });
+
+    const maxDepth = trees.length === 0 ? 0 : Math.max(...trees.map(t => {
+      const getMax = (n: any): number => {
+        if (n.children.length === 0) return 0;
+        return 1 + Math.max(...n.children.map(getMax));
+      };
+      return getMax(t);
+    }));
+
+    const canvasWidth = (maxDepth + 1) * 80 + 200;
+    const canvasHeight = layoutNodes.length === 0 ? 240 : Math.max(...layoutNodes.map(n => n.y)) + 80;
+
+    return (
+      <div className="space-y-8 pb-12">
+        <div className="bg-gradient-to-r from-yellow-500 via-amber-600 to-yellow-500 rounded-3xl p-8 text-center text-white shadow-xl relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-yellow-400/20 via-transparent to-transparent pointer-events-none" />
+          <span className="text-4xl block mb-2 animate-bounce">👑</span>
+          <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight">The Pot is Won!</h2>
+          {champ && (
+            <p className="text-sm md:text-md font-bold mt-2 text-yellow-100">
+              Congratulations to our Master Assassin: <span className="underline decoration-yellow-300 decoration-2 font-black">{getCampEmoji(champ.name)} {champ.name}</span>
+            </p>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Podium 1: Survival Podium */}
+          <div className="bg-white border border-[#dce6e1] rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+            <div className="text-center pb-4 border-b border-[#dce6e1]/40">
+              <h3 className="text-xs font-black text-[#1b4332] uppercase tracking-widest flex items-center justify-center gap-1.5">
+                <Crown size={14} className="text-yellow-500" /> Survival Hall of Fame
+              </h3>
+              <p className="text-[9px] text-slate-400 mt-0.5">The final three campers standing in the hunt</p>
+            </div>
+
+            <div className="flex items-end justify-center gap-3 pt-8 pb-2">
+              {secondPlace && (
+                <div className="flex flex-col items-center w-24">
+                  <span className="text-xs font-black text-slate-650 text-center truncate w-full px-1">
+                    {getCampEmoji(secondPlace.name)} {secondPlace.name.split(" ")[0]}
+                  </span>
+                  <span className="text-[8px] font-black text-slate-450 mb-1">2nd Place</span>
+                  <div className="w-full bg-gradient-to-t from-slate-200 to-slate-100 border border-slate-300 rounded-t-xl h-24 flex items-center justify-center shadow-xs">
+                    <span className="text-2xl font-black text-slate-400">🥈</span>
+                  </div>
+                </div>
+              )}
+
+              {champ && (
+                <div className="flex flex-col items-center w-28">
+                  <span className="text-sm font-black text-amber-600 text-center truncate w-full px-1">
+                    {getCampEmoji(champ.name)} {champ.name.split(" ")[0]}
+                  </span>
+                  <span className="text-[9px] font-black text-amber-500 mb-1">🏆 Winner</span>
+                  <div className="w-full bg-gradient-to-t from-yellow-300 to-yellow-100 border-2 border-yellow-400 rounded-t-2xl h-32 flex items-center justify-center shadow-sm relative">
+                    <span className="absolute -top-3 text-lg animate-pulse">👑</span>
+                    <span className="text-3xl font-black">🥇</span>
+                  </div>
+                </div>
+              )}
+
+              {thirdPlace && (
+                <div className="flex flex-col items-center w-24">
+                  <span className="text-xs font-black text-amber-850 text-center truncate w-full px-1">
+                    {getCampEmoji(thirdPlace.name)} {thirdPlace.name.split(" ")[0]}
+                  </span>
+                  <span className="text-[8px] font-black text-amber-750 mb-1">3rd Place</span>
+                  <div className="w-full bg-gradient-to-t from-orange-200 to-orange-100 border border-orange-300 rounded-t-xl h-18 flex items-center justify-center shadow-xs">
+                    <span className="text-2xl font-black text-amber-700">🥉</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Podium 2: Kill Master Podium */}
+          <div className="bg-white border border-[#dce6e1] rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+            <div className="text-center pb-4 border-b border-[#dce6e1]/40">
+              <h3 className="text-xs font-black text-[#1b4332] uppercase tracking-widest flex items-center justify-center gap-1.5">
+                <Skull size={14} className="text-rose-500" /> Kill Master Leaderboard
+              </h3>
+              <p className="text-[9px] text-slate-400 mt-0.5">Campers with the most registered spoonings</p>
+            </div>
+
+            <div className="flex items-end justify-center gap-3 pt-8 pb-2">
+              {killSecond && (
+                <div className="flex flex-col items-center w-24">
+                  <span className="text-xs font-black text-slate-655 text-center truncate w-full px-1">
+                    {getCampEmoji(killSecond.name)} {killSecond.name.split(" ")[0]}
+                  </span>
+                  <span className="text-[8px] font-black text-slate-455 mb-1">{killSecond.kills} Kills</span>
+                  <div className="w-full bg-gradient-to-t from-slate-200 to-slate-100 border border-slate-300 rounded-t-xl h-24 flex items-center justify-center shadow-xs">
+                    <span className="text-2xl font-black text-slate-400">🥈</span>
+                  </div>
+                </div>
+              )}
+
+              {killChamp && (
+                <div className="flex flex-col items-center w-28">
+                  <span className="text-sm font-black text-amber-600 text-center truncate w-full px-1">
+                    {getCampEmoji(killChamp.name)} {killChamp.name.split(" ")[0]}
+                  </span>
+                  <span className="text-[9px] font-black text-amber-500 mb-1">{killChamp.kills} Kills</span>
+                  <div className="w-full bg-gradient-to-t from-yellow-300 to-yellow-100 border-2 border-yellow-400 rounded-t-2xl h-32 flex items-center justify-center shadow-sm relative">
+                    <span className="text-3xl font-black">🥇</span>
+                  </div>
+                </div>
+              )}
+
+              {killThird && (
+                <div className="flex flex-col items-center w-24">
+                  <span className="text-xs font-black text-amber-850 text-center truncate w-full px-1">
+                    {getCampEmoji(killThird.name)} {killThird.name.split(" ")[0]}
+                  </span>
+                  <span className="text-[8px] font-black text-amber-755 mb-1">{killThird.kills} Kills</span>
+                  <div className="w-full bg-gradient-to-t from-orange-200 to-orange-100 border border-orange-300 rounded-t-xl h-18 flex items-center justify-center shadow-xs">
+                    <span className="text-2xl font-black text-amber-700">🥉</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white border border-[#dce6e1] rounded-3xl p-6 shadow-sm space-y-4">
+          <h4 className="text-xs font-black text-[#1b4332] uppercase tracking-widest border-b border-[#dce6e1]/40 pb-2">
+            📊 Spooning Legacy Stats
+          </h4>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="bg-[#fdfbf7] border border-[#dce6e1] rounded-2xl p-4 text-center">
+              <p className="text-[8px] text-slate-400 font-black uppercase tracking-wider">Total Spoonings</p>
+              <h4 className="text-lg font-black text-[#1b4332] mt-1">{gameState.killLog.length}</h4>
+            </div>
+            <div className="bg-[#fdfbf7] border border-[#dce6e1] rounded-2xl p-4 text-center">
+              <p className="text-[8px] text-slate-400 font-black uppercase tracking-wider">Avg Survival Time</p>
+              <h4 className="text-sm font-black text-[#1b4332] mt-1.5">{analyticsData.avgSurvivalStr}</h4>
+            </div>
+            <div className="bg-[#fdfbf7] border border-[#dce6e1] rounded-2xl p-4 text-center">
+              <p className="text-[8px] text-slate-400 font-black uppercase tracking-wider">Most Dangerous Day</p>
+              <h4 className="text-xs font-black text-rose-700 mt-2 truncate">
+                {maxDay} ({maxKills} kills)
+              </h4>
+            </div>
+            <div className="bg-[#fdfbf7] border border-[#dce6e1] rounded-2xl p-4 text-center">
+              <p className="text-[8px] text-slate-400 font-black uppercase tracking-wider">Betting Slippers</p>
+              <h4 className="text-lg font-black text-emerald-700 mt-1">{totalBets}</h4>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white border border-[#dce6e1] rounded-3xl p-6 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#dce6e1]/40 pb-2">
+            <div>
+              <h4 className="text-xs font-black text-[#1b4332] uppercase tracking-widest">
+                🔍 Camper Profile Lookup
+              </h4>
+              <p className="text-[9px] text-slate-400 mt-0.5">Select a camper to view their personal performance summary</p>
+            </div>
+
+            <select
+              value={lookupPlayerId}
+              onChange={e => setLookupPlayerId(e.target.value)}
+              className="bg-[#faf9f5] border border-[#dce6e1] rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#1b4332] text-[#1b4332]"
+            >
+              <option value="">-- Choose Camper --</option>
+              {[...gameState.players]
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          {lookupPlayer ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+              <div className="bg-[#fdfbf7] border border-[#dce6e1] rounded-2xl p-4 space-y-2">
+                <span className="text-[9px] font-black text-slate-455 uppercase tracking-widest">Rank & Status</span>
+                <div className="space-y-1">
+                  <p className="text-sm font-black text-[#1b4332]">
+                    Survival Rank: <span className="text-amber-500">#{lookupPlayerRank}</span> of {gameState.players.length}
+                  </p>
+                  <div className="text-xs font-bold text-slate-655">
+                    Status: {lookupPlayer.isDead ? (
+                      <span className="text-rose-600 font-extrabold">☠️ Spooned by {lookupPlayer.eliminatedBy}</span>
+                    ) : (
+                      <span className="text-emerald-600 font-black">👑 Survivor</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-[#fdfbf7] border border-[#dce6e1] rounded-2xl p-4 space-y-2">
+                <span className="text-[9px] font-black text-slate-455 uppercase tracking-widest">Spooning History</span>
+                <div className="space-y-1">
+                  <p className="text-sm font-black text-[#1b4332]">
+                    Kills: <span className="text-rose-600">{lookupPlayerKills}</span>
+                  </p>
+                  {lookupPlayerVictims.length > 0 ? (
+                    <div className="text-[10px] text-slate-500 font-semibold truncate">
+                      Spooned: {lookupPlayerVictims.join(", ")}
+                    </div>
+                  ) : (
+                    <p className="text-[10px] text-slate-400 italic">No spoon grabs logged.</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-[#fdfbf7] border border-[#dce6e1] rounded-2xl p-4 space-y-2">
+                <span className="text-[9px] font-black text-slate-455 uppercase tracking-widest">Betting Slip</span>
+                <div className="space-y-1">
+                  {lookupPlayerBetPlayer ? (
+                    <>
+                      <p className="text-sm font-black text-[#1b4332]">
+                        Voted for: {lookupPlayerBetPlayer.name}
+                      </p>
+                      <div className="text-xs font-bold">
+                        Result: {isLookupBetCorrect ? (
+                          <span className="text-emerald-650 font-black">🔮 CORRECT (+1 Drink! 🥤)</span>
+                        ) : (
+                          <span className="text-slate-400">❌ Incorrect</span>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-xs text-slate-400 italic">No bet locked in.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-6 text-slate-400 text-xs italic">
+              Select a player to view their profile stats!
+            </div>
+          )}
+        </div>
+
+        {/* Embedded Lineage Tree Map */}
+        <div className="bg-white border border-[#dce6e1] rounded-3xl p-6 shadow-sm space-y-4">
+          <div className="border-b border-[#dce6e1]/40 pb-3">
+            <h4 className="text-xs font-black text-[#1b4332] uppercase tracking-widest">
+              🗺️ Spoons Elimination Lineage Tree
+            </h4>
+            <p className="text-[9px] text-slate-400 mt-0.5">Explore the chain of kills from start to finish. Scroll/drag to view.</p>
+          </div>
+
+          <div className="relative bg-[#FAF9F5] border border-[#dce6e1]/65 rounded-2xl overflow-auto h-96 grid-backdrop">
+            <div
+              style={{
+                width: `${canvasWidth}px`,
+                height: `${canvasHeight}px`,
+                position: "relative"
+              }}
+            >
+              <svg
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  height: "100%",
+                  pointerEvents: "none"
+                }}
+              >
+                {connectionPaths.map(path => (
+                  <g key={path.key}>
+                    <path
+                      d={`M ${path.from.x + 36} ${path.from.y + 14} L ${path.to.x} ${path.to.y + 14}`}
+                      fill="none"
+                      stroke="#dce6e1"
+                      strokeWidth="2"
+                    />
+                    <path
+                      d={`M ${path.from.x + 36} ${path.from.y + 14} L ${path.to.x} ${path.to.y + 14}`}
+                      fill="none"
+                      stroke="#2d6a4f"
+                      strokeWidth="2"
+                      className="flow-active"
+                      opacity="0.35"
+                    />
+                  </g>
+                ))}
+              </svg>
+
+              {layoutNodes.map(node => {
+                const isChampion = champ && node.id === champ.id;
+                const emoji = getCampEmoji(node.name);
+                return (
+                  <div
+                    key={node.id}
+                    className={`absolute rounded-lg border px-2 py-1 shadow-3xs flex items-center gap-1 text-4xs font-black uppercase transition-all select-none hover:scale-105`}
+                    style={{
+                      left: `${node.x}px`,
+                      top: `${node.y}px`,
+                      width: "100px",
+                      height: "28px",
+                      backgroundColor: isChampion ? "#fef08a" : node.isDead ? "#fee2e2" : "#d1fae5",
+                      borderColor: isChampion ? "#facc15" : node.isDead ? "#fca5a5" : "#6ee7b7",
+                      color: isChampion ? "#854d0e" : node.isDead ? "#991b1b" : "#065f46"
+                    }}
+                  >
+                    <span className="text-2xs shrink-0">{isChampion ? "👑" : emoji}</span>
+                    <span className="truncate w-full font-black text-center">{node.name.split(" ")[0]}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderRules = () => (
     <div className="bg-white border border-[#dce6e1] rounded-3xl p-6 shadow-sm">
       <button
@@ -2033,44 +2429,46 @@ export default function KillCamDashboard() {
       ) : (
         /* 2. LIVE STATS PHASE */
         <main className="max-w-6xl mx-auto px-4 md:px-6 pt-6">
+          {isGameOver ? (
+            renderGameOverRecap()
+          ) : (
+            <>
+              {/* Champion Alert (shared across view modes) */}
+              {renderWinner()}
 
-          {/* Champion Alert (shared across view modes) */}
-          {renderWinner()}
+              <div className="mt-6">
+                {/* DESKTOP-ONLY LAYOUT (2 Columns) */}
+                <div className="hidden lg:grid grid-cols-12 gap-6 items-start">
+                  <div className="col-span-7 space-y-6">
+                    {renderFlowChart()}
+                    {renderLeaderboard()}
+                    {renderSurvivors()}
+                    {renderGraveyard()}
+                    {renderRules()}
+                  </div>
+                  <div className="col-span-5 space-y-6">
+                    {renderStats()}
+                    {renderLethalAnalytics()}
+                    {renderDossier()}
+                    {renderFeed()}
+                  </div>
+                </div>
 
-          <div className="mt-6">
-
-            {/* DESKTOP-ONLY LAYOUT (2 Columns) */}
-            <div className="hidden lg:grid grid-cols-12 gap-6 items-start">
-              <div className="col-span-7 space-y-6">
-                {renderFlowChart()}
-                {renderLeaderboard()}
-                {renderSurvivors()}
-                {renderGraveyard()}
-                {renderRules()}
+                {/* MOBILE-OPTIMIZED LAYOUT (Single Column with exact ordered elements) */}
+                <div className="flex flex-col gap-6 lg:hidden">
+                  {renderStats()}
+                  {renderLethalAnalytics()}
+                  {renderDossier()}
+                  {renderFlowChart()}
+                  {renderLeaderboard()}
+                  {renderFeed()}
+                  {renderSurvivors()}
+                  {renderGraveyard()}
+                  {renderRules()}
+                </div>
               </div>
-              <div className="col-span-5 space-y-6">
-                {renderStats()}
-                {renderLethalAnalytics()}
-                {renderDossier()}
-                {renderFeed()}
-              </div>
-            </div>
-
-            {/* MOBILE-OPTIMIZED LAYOUT (Single Column with exact ordered elements) */}
-            <div className="flex flex-col gap-6 lg:hidden">
-              {renderStats()}
-              {renderLethalAnalytics()}
-              {renderDossier()}
-              {renderFlowChart()}
-              {renderLeaderboard()}
-              {renderFeed()}
-              {renderSurvivors()}
-              {renderGraveyard()}
-              {renderRules()}
-            </div>
-
-          </div>
-
+            </>
+          )}
         </main>
       )}
 
